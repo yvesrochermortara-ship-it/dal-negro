@@ -231,6 +231,12 @@
   @media (max-width:420px){
     #playersPanel{ width:188px; }
   }
+
+  #rulesPanel{ position:fixed; top:calc(54px + env(safe-area-inset-top)); right:calc(10px + env(safe-area-inset-right)); width:320px; max-height:70vh; overflow-y:auto; background:rgba(11,42,32,.97); border:1px solid var(--gold); border-radius:12px; padding:16px; z-index:999; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); box-shadow:0 8px 24px rgba(0,0,0,.4); }
+  #rulesPanel .rp-title{ font-family:'Cinzel',serif; color:var(--gold-light); font-size:15px; font-weight:700; margin-bottom:10px; text-align:center; letter-spacing:.04em; text-transform:uppercase; }
+  @media (max-width:420px){
+    #rulesPanel{ width:calc(100vw - 20px); right:10px; }
+  }
   .score-pip{
     display:inline-block; min-width:26px; padding:2px 6px; border-radius:12px; font-weight:800;
     background:rgba(255,255,255,.08);
@@ -273,10 +279,12 @@
 <body>
 <div id="globalToolbar">
   <button id="playersToggleBtn" class="icon-btn" title="Giocatori" style="display:none;">👥</button>
+  <button id="rulesToggleBtn" class="icon-btn" title="Regole">📖</button>
   <button id="homeIconBtn" class="icon-btn" title="Schermata iniziale">🏠</button>
   <button id="quitIconBtn" class="icon-btn" title="Esci dal gioco">✕</button>
 </div>
 <div id="playersPanel" style="display:none;"></div>
+<div id="rulesPanel" style="display:none;"></div>
 <div id="app"></div>
 
 <script>
@@ -696,6 +704,10 @@ function wireCardHover(labelId, tableBestRank){
 
 function render(){
   app.innerHTML = '';
+  if(game && game.phase!=='jokerChoice' && game.phase!=='blindJokerChoice'){
+    const stuckOverlay = document.getElementById('jokerOverlay');
+    if(stuckOverlay) stuckOverlay.remove();
+  }
   if(!game){ renderSetup(); return; }
   switch(game.phase){
     case 'roundIntro': renderRoundIntro(); break;
@@ -989,9 +1001,11 @@ function renderBlindReveal(){
 }
 
 function renderJokerModal(){
+  const existing = document.getElementById('jokerOverlay');
+  if(existing) existing.remove();
   const isBlind = game.phase==='blindJokerChoice';
   const name = isBlind ? playerById(game.pendingJokerCard).name : playerById(game.pendingJokerCard.playerId).name;
-  const overlay = el(`<div class="modal-overlay">
+  const overlay = el(`<div class="modal-overlay" id="jokerOverlay">
     <div class="panel" style="max-width:420px;">
       <div class="section-title">${name}, il Jolly!</div>
       <p class="center-text" style="opacity:.85;">Decidi se il Jolly vale come la carta più alta o più bassa di questa presa.</p>
@@ -1557,6 +1571,10 @@ function renderOnlineJoinScreen(errorMsg){
 
 function renderOnline(){
   if(!og){ hidePlayersPanel(); renderOnlineJoinScreen(); return; }
+  if(og.phase!=='jokerChoice' && og.phase!=='blindJokerChoice'){
+    const stuckOverlay = document.getElementById('jokerOverlay');
+    if(stuckOverlay) stuckOverlay.remove();
+  }
   renderPlayersPanel();
   const me = rPlayerById(og, myId);
   if(me && me.banned){ renderBannedScreen(); return; }
@@ -1861,13 +1879,16 @@ function renderOnlineBlindRevealUnderlying(){
 }
 
 function renderOnlineJoker(){
+  const existing = document.getElementById('jokerOverlay');
+  if(existing) existing.remove();
+
   const ownerId = og.phase==='blindJokerChoice' ? og.pendingJokerCard : og.pendingJokerCard.playerId;
   const isMe = ownerId===myId;
   if(og.phase==='jokerChoice') renderOnlinePlaying(true);
   else renderOnlineBlindRevealUnderlying();
 
   if(isMe){
-    const overlay = el(`<div class="modal-overlay"><div class="panel" style="max-width:420px;">
+    const overlay = el(`<div class="modal-overlay" id="jokerOverlay"><div class="panel" style="max-width:420px;">
       <div class="section-title">Il Jolly!</div>
       <p class="center-text" style="opacity:.85;">Decidi se il Jolly vale come la carta più alta o più bassa di questa presa.</p>
       <div class="joker-choice">
@@ -1879,7 +1900,7 @@ function renderOnlineJoker(){
     document.getElementById('jHigh').onclick = ()=>{ overlay.remove(); actOnline(state=>{ rConfirmJokerChoice(state, myId, 'alta'); }); };
     document.getElementById('jLow').onclick = ()=>{ overlay.remove(); actOnline(state=>{ rConfirmJokerChoice(state, myId, 'bassa'); }); };
   } else {
-    const overlay = el(`<div class="modal-overlay"><div class="panel" style="max-width:420px;">
+    const overlay = el(`<div class="modal-overlay" id="jokerOverlay"><div class="panel" style="max-width:420px;">
       <div class="section-title">Il Jolly!</div>
       <p class="center-text" style="opacity:.85;">${rPlayerById(og,ownerId).name} sta decidendo se vale alta o bassa...</p>
     </div></div>`);
@@ -2012,6 +2033,44 @@ document.getElementById('playersToggleBtn').onclick = ()=>{
   playersPanelOpen = !playersPanelOpen;
   const panel = document.getElementById('playersPanel');
   if(panel) panel.style.display = playersPanelOpen ? 'block' : 'none';
+  if(playersPanelOpen){
+    rulesPanelOpen = false;
+    const rp = document.getElementById('rulesPanel');
+    if(rp) rp.style.display = 'none';
+  }
+};
+
+const RULES_PANEL_HTML = `
+  <div class="rp-title">📖 Regole di Dal Negro</div>
+  <div class="rules-text">
+    <h3>Mazzo</h3>
+    <p>40 carte romagnole/napoletane (senza l'1 di denari) più il Jolly. Ordine dei semi dal più debole al più forte: Bastoni, Spade, Coppe, Denari. All'interno dello stesso seme conta il valore (1‑7, Fante, Cavallo, Re). Il Jolly viene giocato decidendo al momento se vale come carta più alta o più bassa della presa.</p>
+    <h3>Round</h3>
+    <p>Si gioca a cicli di mani da 5, 4, 3, 2, 1 carte, poi si ricomincia da 5. Il mazziere ruota ogni round.</p>
+    <h3>Previsioni</h3>
+    <p>Guardando le proprie carte, ogni giocatore dichiara quante prese pensa di fare, iniziando da chi sta subito dopo il mazziere e finendo con il mazziere stesso. Il totale delle previsioni non può mai essere uguale al numero di carte del round: l'ultimo a dichiarare (il mazziere) non può scegliere il valore che pareggerebbe questo totale.</p>
+    <h3>Chi apre la presa</h3>
+    <p>Nella prima presa del round apre chi sta subito dopo il mazziere. Nelle prese successive apre sempre chi ha vinto la presa precedente.</p>
+    <h3>Il round da 1 carta</h3>
+    <p>Regola speciale: potete vedere le carte di tutti tranne la vostra. Dichiarate se pensate di prendere la presa oppure no, basandovi su quello che vedete in mano agli altri.</p>
+    <h3>Punteggio</h3>
+    <p>Alla fine del round, chi non ha rispettato la propria previsione prende punti di penalità pari alla differenza tra prese dichiarate e prese realmente fatte. Obiettivo: restare più vicino possibile a 0. Al raggiungimento di 7 punti si viene eliminati. Vince l'ultimo giocatore rimasto in gioco.</p>
+  </div>
+`;
+let rulesPanelOpen = false;
+document.getElementById('rulesToggleBtn').onclick = ()=>{
+  rulesPanelOpen = !rulesPanelOpen;
+  const panel = document.getElementById('rulesPanel');
+  if(!panel) return;
+  if(rulesPanelOpen && !panel.innerHTML.trim()){
+    panel.innerHTML = RULES_PANEL_HTML;
+  }
+  panel.style.display = rulesPanelOpen ? 'block' : 'none';
+  if(rulesPanelOpen){
+    playersPanelOpen = false;
+    const pp = document.getElementById('playersPanel');
+    if(pp) pp.style.display = 'none';
+  }
 };
 
 document.getElementById('homeIconBtn').onclick = ()=>{ showHome(); };
