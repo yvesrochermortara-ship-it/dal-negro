@@ -234,38 +234,38 @@
 // di Claude.ai, disponibile SOLO dentro Claude.ai. Per farlo funzionare
 // su un hosting esterno (GitHub Pages, Netlify, ecc.) qui sotto ricreiamo
 // la stessa identica interfaccia (get/set/delete) appoggiandoci a:
-//  - kvdb.io per i dati CONDIVISI (le stanze online, viste da tutti i giocatori)
+//  - Firebase Realtime Database per i dati CONDIVISI (le stanze online, viste da tutti i giocatori)
 //  - localStorage per i dati PERSONALI (l'identità del singolo dispositivo)
 //
-// >>> DEVI INSERIRE QUI SOTTO IL TUO BUCKET ID DI KVDB.IO <<<
-const KVDB_BUCKET = '3f61VoiCUKxh3ZFTuN8tes';
+// URL del tuo Firebase Realtime Database (senza slash finale)
+const FIREBASE_URL = 'https://dal-358d6-default-rtdb.firebaseio.com';
 
-const STORAGE_READY = !!KVDB_BUCKET && !KVDB_BUCKET.startsWith('INSERISCI');
+const STORAGE_READY = !!FIREBASE_URL && !FIREBASE_URL.startsWith('INSERISCI');
 
 (function(){
-  function kvUrl(key){ return 'https://kvdb.io/' + KVDB_BUCKET + '/' + encodeURIComponent(key); }
+  function fbUrl(key){ return FIREBASE_URL + '/' + encodeURIComponent(key) + '.json'; }
 
-  async function kvGet(key){
+  async function fbGet(key){
     if(!STORAGE_READY) return null;
     try{
-      const res = await fetch(kvUrl(key));
-      if(res.status === 404) return null;
+      const res = await fetch(fbUrl(key));
       if(!res.ok) return null;
-      const value = await res.text();
+      const data = await res.json();
+      if(data===null || data===undefined) return null;
+      return {key, value:data, shared:true};
+    }catch(e){ return null; }
+  }
+  async function fbSet(key, value){
+    if(!STORAGE_READY) return null;
+    try{
+      await fetch(fbUrl(key), {method:'PUT', body: JSON.stringify(value)});
       return {key, value, shared:true};
     }catch(e){ return null; }
   }
-  async function kvSet(key, value){
+  async function fbDelete(key){
     if(!STORAGE_READY) return null;
     try{
-      await fetch(kvUrl(key), {method:'POST', body:value});
-      return {key, value, shared:true};
-    }catch(e){ return null; }
-  }
-  async function kvDelete(key){
-    if(!STORAGE_READY) return null;
-    try{
-      await fetch(kvUrl(key), {method:'DELETE'});
+      await fetch(fbUrl(key), {method:'DELETE'});
       return {key, deleted:true, shared:true};
     }catch(e){ return null; }
   }
@@ -291,9 +291,9 @@ const STORAGE_READY = !!KVDB_BUCKET && !KVDB_BUCKET.startsWith('INSERISCI');
   }
 
   window.storage = {
-    get: (key, shared)=> shared ? kvGet(key) : Promise.resolve(lsGet(key)),
-    set: (key, value, shared)=> shared ? kvSet(key, value) : Promise.resolve(lsSet(key, value)),
-    delete: (key, shared)=> shared ? kvDelete(key) : Promise.resolve(lsDelete(key)),
+    get: (key, shared)=> shared ? fbGet(key) : Promise.resolve(lsGet(key)),
+    set: (key, value, shared)=> shared ? fbSet(key, value) : Promise.resolve(lsSet(key, value)),
+    delete: (key, shared)=> shared ? fbDelete(key) : Promise.resolve(lsDelete(key)),
     list: async (prefix, shared)=> ({keys:[], prefix, shared:!!shared}) // non usato da questo gioco
   };
 })();
