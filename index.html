@@ -1,0 +1,1668 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>Dal Negro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Nunito+Sans:ital,wght@0,400;0,600;0,700;0,800;1,600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --felt-dark:#0d3226;
+    --felt:#124232;
+    --felt-light:#1a5640;
+    --wood:#4a2f1e;
+    --wood-light:#6b4429;
+    --gold:#c9a227;
+    --gold-light:#e6c968;
+    --cream:#f3ecd8;
+    --ink:#241a12;
+    --bastoni:#6b4429;
+    --spade:#3f5e73;
+    --coppe:#93342f;
+    --denari:#ab8a1e;
+    --danger:#a13d3d;
+    --shadow: 0 10px 30px rgba(0,0,0,.45);
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; padding:0; height:100%;
+    background:
+      radial-gradient(ellipse at 50% 0%, var(--felt-light) 0%, var(--felt) 45%, var(--felt-dark) 100%);
+    font-family:'Nunito Sans', sans-serif;
+    color:var(--cream);
+    overflow-x:hidden;
+  }
+  #app{
+    min-height:100vh;
+    display:flex; flex-direction:column;
+    align-items:center;
+    padding:22px 14px 40px;
+  }
+  h1.title{
+    font-family:'Cinzel', serif;
+    font-weight:800;
+    letter-spacing:.14em;
+    font-size:clamp(28px, 6vw, 46px);
+    color:var(--gold-light);
+    text-shadow: 0 2px 0 rgba(0,0,0,.5), 0 0 30px rgba(201,162,39,.25);
+    margin:6px 0 2px;
+    text-align:center;
+  }
+  .subtitle{
+    font-style:italic;
+    color:var(--cream);
+    opacity:.75;
+    font-size:14px;
+    margin-bottom:22px;
+    text-align:center;
+    letter-spacing:.02em;
+  }
+  .panel{
+    background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(0,0,0,.15)), var(--wood);
+    border:2px solid var(--gold);
+    border-radius:16px;
+    box-shadow:var(--shadow);
+    padding:24px;
+    width:100%;
+    max-width:520px;
+  }
+  .btn{
+    font-family:'Nunito Sans',sans-serif;
+    font-weight:800;
+    letter-spacing:.03em;
+    border:none;
+    border-radius:10px;
+    padding:13px 20px;
+    font-size:15px;
+    cursor:pointer;
+    background:linear-gradient(180deg, var(--gold-light), var(--gold));
+    color:var(--ink);
+    box-shadow:0 4px 0 #7a5f13, 0 6px 12px rgba(0,0,0,.35);
+    transition:transform .08s ease;
+  }
+  .btn:active{ transform:translateY(3px); box-shadow:0 1px 0 #7a5f13; }
+  .btn.secondary{
+    background:linear-gradient(180deg, #3a5a4a, #24402f);
+    color:var(--cream);
+    box-shadow:0 4px 0 #14261c, 0 6px 12px rgba(0,0,0,.35);
+  }
+  .btn.danger{
+    background:linear-gradient(180deg, #c25c56, var(--danger));
+    color:#fff;
+    box-shadow:0 4px 0 #6e2320, 0 6px 12px rgba(0,0,0,.35);
+  }
+  .btn:disabled{ opacity:.35; cursor:not-allowed; box-shadow:none; transform:none;}
+  .btn-row{ display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin-top:16px;}
+  label.field-label{ display:block; font-weight:700; margin:14px 0 6px; color:var(--gold-light); font-size:13px; letter-spacing:.05em; text-transform:uppercase;}
+  input[type=text], input[type=number]{
+    width:100%; padding:11px 12px; border-radius:8px; border:2px solid var(--wood-light);
+    background:var(--cream); color:var(--ink); font-size:15px; font-family:'Nunito Sans',sans-serif;
+  }
+  .player-count-row{ display:flex; align-items:center; justify-content:center; gap:16px; margin-top:8px;}
+  .count-btn{
+    width:44px;height:44px;border-radius:50%; border:2px solid var(--gold); background:var(--felt-dark);
+    color:var(--gold-light); font-size:22px; font-weight:800; cursor:pointer;
+  }
+  .count-display{ font-family:'Cinzel',serif; font-size:34px; font-weight:700; color:var(--gold-light); min-width:50px; text-align:center;}
+  .name-inputs{ display:flex; flex-direction:column; gap:8px; margin-top:10px;}
+  .name-row{ display:flex; align-items:center; gap:10px;}
+  .seat-badge{
+    width:28px;height:28px;border-radius:50%;background:var(--gold); color:var(--ink); font-weight:800;
+    display:flex; align-items:center; justify-content:center; font-size:13px; flex-shrink:0;
+  }
+
+  /* Pass device screen */
+  .pass-screen{ text-align:center; }
+  .pass-name{ font-family:'Cinzel',serif; font-size:30px; color:var(--gold-light); margin:14px 0 4px;}
+  .pass-hint{ opacity:.8; font-size:14px; margin-bottom:18px; }
+
+  /* Card visuals */
+  .card{
+    width:72px; height:104px; border-radius:9px;
+    background:linear-gradient(180deg,#fbf7ea,var(--cream));
+    border:2px solid var(--ink);
+    display:flex; flex-direction:column; align-items:center; justify-content:space-between;
+    padding:6px 4px; position:relative; flex-shrink:0;
+    box-shadow:0 3px 8px rgba(0,0,0,.4);
+    color:var(--ink);
+    user-select:none;
+  }
+  .card.small{ width:56px; height:82px; padding:4px 3px;}
+  .card .corner{ font-family:'Cinzel',serif; font-weight:700; font-size:13px; align-self:flex-start; line-height:1;}
+  .card.small .corner{ font-size:10px;}
+  .card .corner.br{ align-self:flex-end; }
+  .card .icon{ width:30px; height:30px; }
+  .card.small .icon{ width:22px; height:22px;}
+  .card.jolly{ background:linear-gradient(160deg,#2a2a2a,#111); border-color:var(--gold);}
+  .card.jolly .corner, .card.jolly .label{ color:var(--gold-light); }
+  .card.back{
+    background:
+      repeating-linear-gradient(45deg, var(--felt-dark), var(--felt-dark) 6px, var(--felt) 6px, var(--felt) 12px);
+    border:2px solid var(--gold);
+  }
+  .card.back::after{
+    content:'DN'; font-family:'Cinzel',serif; font-weight:800; color:var(--gold-light);
+    font-size:16px; opacity:.85;
+  }
+  .card.clickable{ cursor:pointer; transition:transform .12s ease, box-shadow .12s ease;}
+  .card.clickable:hover{ transform:translateY(-8px); box-shadow:0 10px 18px rgba(0,0,0,.5); }
+  .card .label{ font-size:9px; font-weight:700; letter-spacing:.03em; text-transform:uppercase; opacity:.75;}
+
+  .hand-row{ display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin:14px 0;}
+
+  /* Table */
+  .table-wrap{
+    width:100%; max-width:640px;
+    background:
+      radial-gradient(ellipse at 50% 40%, var(--felt-light), var(--felt) 70%);
+    border:6px solid var(--wood);
+    border-radius:50% / 30%;
+    padding:34px 20px;
+    margin:10px 0 20px;
+    box-shadow:inset 0 0 60px rgba(0,0,0,.5), var(--shadow);
+    min-height:180px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .table-cards{ display:flex; gap:14px; flex-wrap:wrap; justify-content:center; align-items:center;}
+  .table-card-slot{ display:flex; flex-direction:column; align-items:center; gap:6px; }
+  .table-card-name{ font-size:11px; font-weight:700; color:var(--gold-light); text-align:center; max-width:70px;}
+  .empty-table-msg{ font-style:italic; opacity:.6; font-size:14px; }
+
+  .info-bar{
+    display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin-bottom:10px; width:100%; max-width:640px;
+  }
+  .chip{
+    background:rgba(0,0,0,.3); border:1px solid var(--gold); border-radius:20px; padding:6px 14px;
+    font-size:12.5px; font-weight:700; letter-spacing:.02em;
+  }
+  .chip .v{ color:var(--gold-light); }
+
+  /* Scoreboard */
+  table.scoreboard{ width:100%; border-collapse:collapse; margin-top:10px; font-size:14px;}
+  table.scoreboard th, table.scoreboard td{ padding:8px 10px; text-align:center; border-bottom:1px solid rgba(255,255,255,.12);}
+  table.scoreboard th{ color:var(--gold-light); font-family:'Cinzel',serif; font-weight:600; font-size:13px; letter-spacing:.03em;}
+  table.scoreboard tr.eliminated td{ opacity:.4; text-decoration:line-through;}
+  table.scoreboard tr.current-turn td:first-child{ color:var(--gold-light); font-weight:800;}
+  .score-pip{
+    display:inline-block; min-width:26px; padding:2px 6px; border-radius:12px; font-weight:800;
+    background:rgba(255,255,255,.08);
+  }
+  .score-pip.danger{ background:var(--danger); color:#fff; }
+
+  .bid-picker{ display:flex; gap:8px; flex-wrap:wrap; justify-content:center; margin:14px 0;}
+  .bid-btn{
+    width:46px; height:46px; border-radius:50%; border:2px solid var(--gold); background:var(--felt-dark);
+    color:var(--cream); font-weight:800; font-size:16px; cursor:pointer; font-family:'Cinzel',serif;
+  }
+  .bid-btn.selected{ background:var(--gold); color:var(--ink); }
+  .bid-btn:disabled{ opacity:.25; cursor:not-allowed; border-color:#555;}
+
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(0,0,0,.65); display:flex; align-items:center; justify-content:center;
+    padding:16px; z-index:50;
+  }
+  .joker-choice{ display:flex; gap:16px; justify-content:center; margin-top:16px;}
+
+  .round-summary-row{ display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px dashed rgba(255,255,255,.15); font-size:14px;}
+  .round-summary-row .name{ font-weight:700; }
+  .round-summary-row .detail{ opacity:.75; font-size:12.5px; }
+  .delta-add{ color:#e88; font-weight:800; }
+  .delta-zero{ color:#8e8; font-weight:800; }
+
+  .winner-banner{
+    font-family:'Cinzel',serif; font-size:26px; color:var(--gold-light); text-align:center; margin:10px 0;
+    text-shadow:0 0 20px rgba(201,162,39,.4);
+  }
+  .rules-link{ background:none; border:none; color:var(--gold-light); text-decoration:underline; cursor:pointer; font-size:13px; margin-top:14px; font-family:'Nunito Sans',sans-serif;}
+  .rules-text{ font-size:13.5px; line-height:1.6; opacity:.9; max-height:60vh; overflow-y:auto; }
+  .rules-text h3{ color:var(--gold-light); font-family:'Cinzel',serif; margin-bottom:4px;}
+  .section-title{ font-family:'Cinzel',serif; color:var(--gold-light); font-size:18px; text-align:center; margin-bottom:6px; letter-spacing:.04em;}
+  .center-text{ text-align:center; }
+  .hidden{ display:none !important; }
+  .flourish{ text-align:center; color:var(--gold); opacity:.5; letter-spacing:.5em; font-size:12px; margin:4px 0 16px;}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+// ============================================================
+// ====== STORAGE SHIM (per hosting esterno) ===================
+// ============================================================
+// Il gioco originale usava "window.storage", l'API di storage interna
+// di Claude.ai, disponibile SOLO dentro Claude.ai. Per farlo funzionare
+// su un hosting esterno (GitHub Pages, Netlify, ecc.) qui sotto ricreiamo
+// la stessa identica interfaccia (get/set/delete) appoggiandoci a:
+//  - kvdb.io per i dati CONDIVISI (le stanze online, viste da tutti i giocatori)
+//  - localStorage per i dati PERSONALI (l'identità del singolo dispositivo)
+//
+// >>> DEVI INSERIRE QUI SOTTO IL TUO BUCKET ID DI KVDB.IO <<<
+const KVDB_BUCKET = '3f61VoiCUKxh3ZFTuN8tes';
+
+const STORAGE_READY = !!KVDB_BUCKET && !KVDB_BUCKET.startsWith('INSERISCI');
+
+(function(){
+  function kvUrl(key){ return 'https://kvdb.io/' + KVDB_BUCKET + '/' + encodeURIComponent(key); }
+
+  async function kvGet(key){
+    if(!STORAGE_READY) return null;
+    try{
+      const res = await fetch(kvUrl(key));
+      if(res.status === 404) return null;
+      if(!res.ok) return null;
+      const value = await res.text();
+      return {key, value, shared:true};
+    }catch(e){ return null; }
+  }
+  async function kvSet(key, value){
+    if(!STORAGE_READY) return null;
+    try{
+      await fetch(kvUrl(key), {method:'POST', body:value});
+      return {key, value, shared:true};
+    }catch(e){ return null; }
+  }
+  async function kvDelete(key){
+    if(!STORAGE_READY) return null;
+    try{
+      await fetch(kvUrl(key), {method:'DELETE'});
+      return {key, deleted:true, shared:true};
+    }catch(e){ return null; }
+  }
+
+  function lsGet(key){
+    try{
+      const value = localStorage.getItem('dn_local_'+key);
+      if(value===null) return null;
+      return {key, value, shared:false};
+    }catch(e){ return null; }
+  }
+  function lsSet(key, value){
+    try{
+      localStorage.setItem('dn_local_'+key, value);
+      return {key, value, shared:false};
+    }catch(e){ return null; }
+  }
+  function lsDelete(key){
+    try{
+      localStorage.removeItem('dn_local_'+key);
+      return {key, deleted:true, shared:false};
+    }catch(e){ return null; }
+  }
+
+  window.storage = {
+    get: (key, shared)=> shared ? kvGet(key) : Promise.resolve(lsGet(key)),
+    set: (key, value, shared)=> shared ? kvSet(key, value) : Promise.resolve(lsSet(key, value)),
+    delete: (key, shared)=> shared ? kvDelete(key) : Promise.resolve(lsDelete(key)),
+    list: async (prefix, shared)=> ({keys:[], prefix, shared:!!shared}) // non usato da questo gioco
+  };
+})();
+
+const SUITS = ['bastoni','spade','coppe','denari']; // low -> high
+const SUIT_LABEL = {bastoni:'Bastoni', spade:'Spade', coppe:'Coppe', denari:'Denari'};
+const SUIT_COLOR = {bastoni:'var(--bastoni)', spade:'var(--spade)', coppe:'var(--coppe)', denari:'var(--denari)'};
+
+function suitIcon(suit, size){
+  const s = size || 30;
+  const icons = {
+    bastoni: `<svg viewBox="0 0 40 40" width="${s}" height="${s}"><rect x="17" y="4" width="6" height="30" rx="3" fill="${SUIT_COLOR.bastoni}"/><ellipse cx="20" cy="34" rx="9" ry="4" fill="${SUIT_COLOR.bastoni}"/></svg>`,
+    spade: `<svg viewBox="0 0 40 40" width="${s}" height="${s}"><path d="M20 3 L27 16 L33 22 L24 22 L26 33 L14 33 L16 22 L7 22 L13 16 Z" fill="${SUIT_COLOR.spade}"/></svg>`,
+    coppe: `<svg viewBox="0 0 40 40" width="${s}" height="${s}"><path d="M9 6 h22 c0 12 -5 17 -11 17 s-11 -5 -11 -17 Z" fill="${SUIT_COLOR.coppe}"/><rect x="18" y="23" width="4" height="8" fill="${SUIT_COLOR.coppe}"/><rect x="13" y="31" width="14" height="3" rx="1.5" fill="${SUIT_COLOR.coppe}"/></svg>`,
+    denari: `<svg viewBox="0 0 40 40" width="${s}" height="${s}"><circle cx="20" cy="20" r="15" fill="none" stroke="${SUIT_COLOR.denari}" stroke-width="4"/><circle cx="20" cy="20" r="6" fill="${SUIT_COLOR.denari}"/></svg>`
+  };
+  return icons[suit] || '';
+}
+
+function valueLabel(v){
+  if(v<=7) return String(v);
+  if(v===8) return 'Fante';
+  if(v===9) return 'Cavallo';
+  if(v===10) return 'Re';
+}
+function valueCorner(v){
+  if(v<=7) return String(v);
+  if(v===8) return 'F';
+  if(v===9) return 'C';
+  if(v===10) return 'R';
+}
+
+function createDeck(){
+  const deck = [];
+  for(const suit of SUITS){
+    for(let v=1; v<=10; v++){
+      if(suit==='denari' && v===1) continue; // asso di denari non esiste
+      deck.push({suit, value:v, id:suit+'-'+v});
+    }
+  }
+  deck.push({suit:'jolly', value:null, id:'jolly'});
+  return deck; // 40 cards
+}
+function shuffle(arr){
+  const a = arr.slice();
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+function rankOf(card){
+  const si = SUITS.indexOf(card.suit);
+  return si*10 + card.value;
+}
+
+// ---------------- GAME STATE ----------------
+let game = null;
+
+function newGame(names){
+  const players = names.map((n,i)=>({
+    id:'p'+i, name:n, seat:i, score:0, eliminated:false
+  }));
+  game = {
+    players,
+    dealerSeat: 0,
+    roundCycle: [5,4,3,2,1],
+    roundCycleIndex: 0,
+    roundCardCount: 5,
+    roundNumber: 1,
+    hands: {},
+    bids: {},
+    bidOrder: [],
+    tricksWon: {},
+    playOrder: [],
+    turnPointer: 0,
+    table: [], // {playerId, card, jokerCall}
+    trickIndex: 0,
+    phase: 'roundIntro',
+    lastRoundSummary: null,
+    pendingJokerCard: null,
+  };
+  startRound();
+}
+
+function activePlayers(){
+  return game.players.filter(p=>!p.eliminated);
+}
+
+function seatOrderFromDealer(){
+  // returns active players array ordered starting right after dealer, ending at dealer
+  const active = activePlayers();
+  // find dealer among active by seat >= dealerSeat wrap, dealer always points to an active player's seat
+  const dealerIdx = active.findIndex(p=>p.seat===game.dealerSeat);
+  const order = [];
+  for(let i=1;i<=active.length;i++){
+    order.push(active[(dealerIdx+i)%active.length]);
+  }
+  return order; // last element is dealer
+}
+
+function rotateCircleFrom(circle, startId){
+  const idx = circle.indexOf(startId);
+  const out = [];
+  for(let i=0;i<circle.length;i++) out.push(circle[(idx+i)%circle.length]);
+  return out;
+}
+
+function startRound(){
+  game.roundCardCount = game.roundCycle[game.roundCycleIndex];
+  const active = activePlayers();
+  const order = seatOrderFromDealer();
+  // fixed seating circle (antiorario) used only to figure out who's "next" after a trick winner
+  game.seatCircle = active.map(p=>p.id);
+  // first trick of the round always opens with the player after the dealer, same as the bidding order
+  game.playOrder = order.map(p=>p.id);
+  game.bidOrder = order.map(p=>p.id);
+
+  const deck = shuffle(createDeck());
+  game.hands = {};
+  active.forEach((p,i)=>{
+    game.hands[p.id] = deck.slice(i*game.roundCardCount, (i+1)*game.roundCardCount);
+  });
+  game.bids = {};
+  game.tricksWon = {};
+  active.forEach(p=>{ game.bids[p.id]=null; game.tricksWon[p.id]=0; });
+  game.table = [];
+  game.trickIndex = 0;
+  game.turnPointer = 0;
+  game.phase = 'roundIntro';
+}
+
+function currentBidderId(){ return game.bidOrder[game.turnPointer]; }
+function currentPlayerToPlayId(){ return game.playOrder[game.turnPointer]; }
+function playerById(id){ return game.players.find(p=>p.id===id); }
+
+function sumBidsSoFar(){
+  let sum=0;
+  for(const id of game.bidOrder){
+    if(game.bids[id]!==null) sum += game.bids[id];
+  }
+  return sum;
+}
+function isLastBidder(){ return game.turnPointer === game.bidOrder.length-1; }
+
+function placeBid(playerId, value){
+  game.bids[playerId] = value;
+  game.turnPointer++;
+  if(game.turnPointer >= game.bidOrder.length){
+    game.turnPointer = 0;
+    if(game.roundCardCount===1){
+      // blind round: auto-play all cards in order immediately
+      autoPlayBlindRound();
+    } else {
+      game.phase = 'passToPlay';
+    }
+  }
+  render();
+}
+
+function autoPlayBlindRound(){
+  game.table = [];
+  for(const id of game.playOrder){
+    const card = game.hands[id][0];
+    let jokerCall = null;
+    if(card.suit==='jolly'){
+      // decide automatically: alternate strategy not needed, ask via modal instead
+    }
+    game.table.push({playerId:id, card, jokerCall});
+  }
+  // if a joker exists among these, we need the owner's choice - handle via modal before finalizing
+  const jokerEntry = game.table.find(t=>t.card.suit==='jolly');
+  if(jokerEntry && jokerEntry.jokerCall===null){
+    game.phase = 'blindJokerChoice';
+    game.pendingJokerCard = jokerEntry.playerId;
+  } else {
+    resolveTrick();
+  }
+}
+
+function playCard(playerId, cardId){
+  const hand = game.hands[playerId];
+  const idx = hand.findIndex(c=>c.id===cardId);
+  const card = hand[idx];
+  if(card.suit==='jolly'){
+    game.pendingJokerCard = {playerId, cardIdx:idx};
+    game.phase = 'jokerChoice';
+    render();
+    return;
+  }
+  finalizePlay(playerId, idx, null);
+}
+
+function finalizePlay(playerId, cardIdx, jokerCall){
+  const hand = game.hands[playerId];
+  const card = hand.splice(cardIdx,1)[0];
+  game.table.push({playerId, card, jokerCall});
+  game.turnPointer++;
+  if(game.turnPointer >= game.playOrder.length){
+    resolveTrick();
+  } else {
+    game.phase = 'playing';
+    render();
+  }
+}
+
+function confirmJokerChoice(choice){
+  if(game.phase==='blindJokerChoice'){
+    const entry = game.table.find(t=>t.playerId===game.pendingJokerCard);
+    entry.jokerCall = choice;
+    game.pendingJokerCard = null;
+    resolveTrick();
+    return;
+  }
+  const {playerId, cardIdx} = game.pendingJokerCard;
+  game.pendingJokerCard = null;
+  finalizePlay(playerId, cardIdx, choice);
+}
+
+function effectiveRank(entry){
+  if(entry.card.suit==='jolly'){
+    return entry.jokerCall==='alta' ? Infinity : -Infinity;
+  }
+  return rankOf(entry.card);
+}
+
+function resolveTrick(){
+  let winner = game.table[0];
+  for(const entry of game.table){
+    if(effectiveRank(entry) > effectiveRank(winner)) winner = entry;
+  }
+  game.tricksWon[winner.playerId]++;
+  game.lastTrickWinner = winner.playerId;
+  game.phase = 'trickResult';
+  render();
+}
+
+function nextTrickOrEndRound(){
+  game.table = [];
+  game.trickIndex++;
+  game.turnPointer = 0;
+  if(game.trickIndex >= game.roundCardCount){
+    endRound();
+  } else {
+    game.playOrder = rotateCircleFrom(game.seatCircle, game.lastTrickWinner);
+    game.phase = 'passToPlay';
+    render();
+  }
+}
+
+function endRound(){
+  const active = activePlayers();
+  const summary = active.map(p=>{
+    const bid = game.bids[p.id];
+    const won = game.tricksWon[p.id];
+    const delta = Math.abs(bid-won);
+    p.score += delta;
+    return {id:p.id, name:p.name, bid, won, delta, newScore:p.score};
+  });
+  game.lastRoundSummary = summary;
+  const newlyEliminated = active.filter(p=>p.score>=7);
+  newlyEliminated.forEach(p=>p.eliminated=true);
+  game.phase = 'roundSummary';
+  render();
+}
+
+function proceedAfterSummary(){
+  const remaining = activePlayers();
+  if(remaining.length<=1){
+    game.phase = 'gameEnd';
+    render();
+    return;
+  }
+  // advance dealer to next active seat after current dealer
+  const seats = game.players.map(p=>p.seat).sort((a,b)=>a-b);
+  let idx = seats.indexOf(game.dealerSeat);
+  let next;
+  for(let i=1;i<=seats.length;i++){
+    const candidateSeat = seats[(idx+i)%seats.length];
+    const candidate = game.players.find(p=>p.seat===candidateSeat);
+    if(!candidate.eliminated){ next = candidateSeat; break; }
+  }
+  game.dealerSeat = next;
+  game.roundCycleIndex = (game.roundCycleIndex+1) % game.roundCycle.length;
+  game.roundNumber++;
+  startRound();
+  render();
+}
+
+// ---------------- RENDER ----------------
+const app = document.getElementById('app');
+
+function el(html){
+  const div = document.createElement('div');
+  div.innerHTML = html;
+  return div.firstElementChild;
+}
+
+function cardHTML(card, opts){
+  opts = opts||{};
+  const cls = ['card'];
+  if(opts.small) cls.push('small');
+  if(opts.clickable) cls.push('clickable');
+  if(card.suit==='jolly'){
+    cls.push('jolly');
+    return `<div class="${cls.join(' ')}" data-card="${card.id}">
+      <div class="corner">★</div>
+      <div class="icon" style="display:flex;align-items:center;justify-content:center;font-size:${opts.small?'20px':'26px'}">🃏</div>
+      <div class="label">Jolly</div>
+    </div>`;
+  }
+  return `<div class="${cls.join(' ')}" data-card="${card.id}">
+    <div class="corner">${valueCorner(card.value)}</div>
+    <div class="icon">${suitIcon(card.suit, opts.small?22:30)}</div>
+    <div class="label">${SUIT_LABEL[card.suit]}</div>
+  </div>`;
+}
+
+function cardBackHTML(small){
+  return `<div class="card back ${small?'small':''}"></div>`;
+}
+
+function render(){
+  app.innerHTML = '';
+  if(!game){ renderSetup(); return; }
+  switch(game.phase){
+    case 'roundIntro': renderRoundIntro(); break;
+    case 'bidding': renderBidding(); break;
+    case 'passToBid': renderPassScreen('bid'); break;
+    case 'playing': renderPlaying(); break;
+    case 'passToPlay': renderPassScreen('play'); break;
+    case 'jokerChoice': renderPlaying(true); renderJokerModal(); break;
+    case 'blindJokerChoice': renderBlindReveal(); renderJokerModal(); break;
+    case 'trickResult': renderTrickResult(); break;
+    case 'roundSummary': renderRoundSummary(); break;
+    case 'gameEnd': renderGameEnd(); break;
+    default: renderSetup();
+  }
+}
+
+function header(){
+  return `<h1 class="title">Dal Negro</h1>
+  <div class="flourish">•·⚜·•</div>`;
+}
+
+function scoreboardHTML(highlightId){
+  const rows = game.players.slice().sort((a,b)=>a.seat-b.seat).map(p=>{
+    const cls = [];
+    if(p.eliminated) cls.push('eliminated');
+    if(p.id===highlightId) cls.push('current-turn');
+    const pipCls = p.score>=5 ? 'score-pip danger' : 'score-pip';
+    return `<tr class="${cls.join(' ')}"><td>${p.name}</td><td><span class="${pipCls}">${p.score}</span></td></tr>`;
+  }).join('');
+  return `<table class="scoreboard"><thead><tr><th>Giocatore</th><th>Punti</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function infoBarHTML(){
+  return `<div class="info-bar">
+    <div class="chip">Round <span class="v">${game.roundNumber}</span></div>
+    <div class="chip">Carte <span class="v">${game.roundCardCount}</span></div>
+    <div class="chip">Presa <span class="v">${game.trickIndex+1}/${game.roundCardCount}</span></div>
+  </div>`;
+}
+
+// ---- Setup screen ----
+function renderSetup(){
+  window._setupCount = window._setupCount || 4;
+  window._setupNames = window._setupNames || Array(8).fill('').map((_,i)=>'');
+  const count = window._setupCount;
+  const namesHTML = Array.from({length:count}).map((_,i)=>{
+    const val = window._setupNames[i] || '';
+    return `<div class="name-row">
+      <div class="seat-badge">${i+1}</div>
+      <input type="text" class="name-input" data-idx="${i}" placeholder="Giocatore ${i+1}" value="${val}">
+    </div>`;
+  }).join('');
+
+  app.appendChild(el(`<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
+    ${header()}
+    <div class="subtitle">Il gioco delle previsioni — 40 carte, nessuna pietà</div>
+    <div class="panel">
+      <div class="section-title">Quanti giocatori?</div>
+      <div class="player-count-row">
+        <button class="count-btn" id="countMinus">−</button>
+        <div class="count-display">${count}</div>
+        <button class="count-btn" id="countPlus">+</button>
+      </div>
+      <label class="field-label">Nomi dei giocatori</label>
+      <div class="name-inputs">${namesHTML}</div>
+      <div class="btn-row">
+        <button class="btn" id="startBtn">Inizia partita</button>
+      </div>
+      <div class="center-text">
+        <button class="rules-link" id="rulesBtn">Come si gioca?</button><br>
+        <button class="rules-link" id="backHomeFromLocal">← Cambia modalità (locale/online)</button>
+      </div>
+    </div>
+  </div>`));
+
+  document.getElementById('countMinus').onclick = ()=>{
+    if(window._setupCount>2){ window._setupCount--; render(); }
+  };
+  document.getElementById('countPlus').onclick = ()=>{
+    if(window._setupCount<8){ window._setupCount++; render(); }
+  };
+  document.querySelectorAll('.name-input').forEach(inp=>{
+    inp.oninput = (e)=>{ window._setupNames[parseInt(e.target.dataset.idx)] = e.target.value; };
+  });
+  document.getElementById('startBtn').onclick = ()=>{
+    const names = [];
+    for(let i=0;i<window._setupCount;i++){
+      const n = (window._setupNames[i]||'').trim();
+      names.push(n || ('Giocatore '+(i+1)));
+    }
+    newGame(names);
+    render();
+  };
+  document.getElementById('rulesBtn').onclick = showRulesModal;
+  document.getElementById('backHomeFromLocal').onclick = showHome;
+}
+
+function showRulesModal(){
+  const overlay = el(`<div class="modal-overlay">
+    <div class="panel" style="max-width:560px;">
+      <div class="section-title">Regole di Dal Negro</div>
+      <div class="rules-text">
+        <h3>Mazzo</h3>
+        <p>40 carte romagnole/napoletane (senza l'1 di denari) più il Jolly. Ordine dei semi dal più debole al più forte: Bastoni, Spade, Coppe, Denari. All'interno dello stesso seme conta il valore (1‑7, Fante, Cavallo, Re). Il Jolly viene giocato decidendo al momento se vale come carta più alta o più bassa della presa.</p>
+        <h3>Round</h3>
+        <p>Si gioca a cicli di mani da 5, 4, 3, 2, 1 carte, poi si ricomincia da 5. Il mazziere ruota ogni round.</p>
+        <h3>Previsioni</h3>
+        <p>Guardando le proprie carte, ogni giocatore dichiara quante prese pensa di fare, iniziando da chi sta subito dopo il mazziere e finendo con il mazziere stesso. Il totale delle previsioni non può mai essere uguale al numero di carte del round: l'ultimo a dichiarare (il mazziere) non può scegliere il valore che pareggerebbe questo totale.</p>
+        <h3>Il round da 1 carta</h3>
+        <p>Regola speciale: potete vedere le carte di tutti tranne la vostra. Dichiarate se pensate di prendere la presa oppure no, basandovi su quello che vedete in mano agli altri.</p>
+        <p><strong>Cosa scoprite alla fine di ogni round: si vede solamente quello che è stato dichiarato</strong> — chi prende la presa la aggiudica in base al valore assoluto delle carte giocate.</p>
+        <h3>Punteggio</h3>
+        <p>Alla fine del round, chi non ha rispettato la propria previsione prende punti di penalità pari alla differenza tra prese dichiarate e prese realmente fatte. Obiettivo: restare più vicino possibile a 0. Al raggiungimento di 7 punti si viene eliminati. Vince l'ultimo giocatore rimasto in gioco.</p>
+      </div>
+      <div class="btn-row"><button class="btn" id="closeRules">Chiudi</button></div>
+    </div>
+  </div>`);
+  document.body.appendChild(overlay);
+  document.getElementById('closeRules').onclick = ()=> overlay.remove();
+}
+
+// ---- Round intro ----
+function renderRoundIntro(){
+  const dealer = playerById(game.players.find(p=>p.seat===game.dealerSeat).id);
+  app.appendChild(el(`<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
+    ${header()}
+    ${infoBarHTML()}
+    <div class="panel center-text">
+      <div class="section-title">Round ${game.roundNumber} — ${game.roundCardCount} cart${game.roundCardCount===1?'a':'e'}</div>
+      <p style="opacity:.85;">Mazziere di turno: <strong style="color:var(--gold-light)">${dealer.name}</strong></p>
+      ${game.roundCardCount===1 ? `<p style="opacity:.85; font-style:italic;">Round speciale: vedrete le carte di tutti tranne la vostra!</p>` : ''}
+      ${scoreboardHTML()}
+      <div class="btn-row"><button class="btn" id="dealBtn">Distribuisci le carte</button></div>
+    </div>
+  </div>`));
+  document.getElementById('dealBtn').onclick = ()=>{
+    game.turnPointer = 0;
+    game.phase = 'passToBid';
+    render();
+  };
+}
+
+// ---- Pass device screen ----
+function renderPassScreen(kind){
+  const id = kind==='bid' ? currentBidderId() : currentPlayerToPlayId();
+  const p = playerById(id);
+  app.appendChild(el(`<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
+    ${header()}
+    ${infoBarHTML()}
+    <div class="panel pass-screen">
+      <div style="font-size:38px;">🂠</div>
+      <div class="pass-name">${p.name}</div>
+      <div class="pass-hint">${kind==='bid' ? 'Passa il dispositivo, guarda le tue carte e dichiara.' : (game.trickIndex>0 && game.turnPointer===0 ? 'Passa il dispositivo: hai vinto la presa precedente, apri tu questa mano!' : 'Passa il dispositivo: tocca a te giocare una carta.')}</div>
+      <div class="btn-row"><button class="btn" id="revealBtn">Mostra le mie carte</button></div>
+    </div>
+  </div>`));
+  document.getElementById('revealBtn').onclick = ()=>{
+    game.phase = kind==='bid' ? 'bidding' : 'playing';
+    render();
+  };
+}
+
+// ---- Bidding ----
+function renderBidding(){
+  const id = currentBidderId();
+  const p = playerById(id);
+  const K = game.roundCardCount;
+  const blind = K===1;
+  const hand = game.hands[id];
+  const isLast = isLastBidder();
+  const sumSoFar = sumBidsSoFar();
+
+  let handSection;
+  if(blind){
+    // show everyone else's single card, hide own
+    const others = game.playOrder.filter(pid=>pid!==id).map(pid=>{
+      const c = game.hands[pid][0];
+      return `<div class="table-card-slot">${cardHTML(c,{small:true})}<div class="table-card-name">${playerById(pid).name}</div></div>`;
+    }).join('');
+    handSection = `<p class="center-text" style="opacity:.8;font-size:13px;">Le carte degli altri (la tua è nascosta):</p>
+      <div class="hand-row">${others}</div>
+      <div class="hand-row">${cardBackHTML(true)}</div>`;
+  } else {
+    handSection = `<p class="center-text" style="opacity:.8;font-size:13px;">Le tue carte:</p>
+      <div class="hand-row">${hand.map(c=>cardHTML(c,{small:true})).join('')}</div>`;
+  }
+
+  let bidButtons;
+  if(blind){
+    bidButtons = [0,1].map(v=>{
+      const would = sumSoFar+v;
+      const disabled = isLast && would===1 && K===1;
+      return `<button class="bid-btn" data-val="${v}" ${disabled?'disabled':''}>${v===1?'Prendo':'No'}</button>`;
+    }).join('');
+  } else {
+    bidButtons = Array.from({length:K+1}).map((_,v)=>{
+      const would = sumSoFar+v;
+      const disabled = isLast && would===K;
+      return `<button class="bid-btn" data-val="${v}" ${disabled?'disabled':''}>${v}</button>`;
+    }).join('');
+  }
+
+  app.appendChild(el(`<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
+    ${header()}
+    ${infoBarHTML()}
+    <div class="panel center-text">
+      <div class="section-title">${p.name}, quante prese farai?</div>
+      ${handSection}
+      ${blind ? `<p style="font-size:12.5px;opacity:.7;">${isLast ? (sumSoFar===0 ? 'Sei l\'ultimo: non puoi dire "Prendo" (il totale farebbe 1) — devi dire "Non prendo".' : sumSoFar===1 ? 'Sei l\'ultimo: non puoi dire "Non prendo" (il totale resterebbe 1) — devi dire "Prendo".' : 'Sei l\'ultimo a dichiarare, puoi scegliere liberamente.') : 'Ricorda: il totale delle dichiarazioni di questo round non potrà mai essere uguale a 1.'}</p>` : ''}
+      ${!blind ? `<p style="font-size:12.5px;opacity:.7;">Totale dichiarato finora: ${sumSoFar}${isLast ? ` — non puoi scegliere ${K-sumSoFar>=0 && K-sumSoFar<=K ? K-sumSoFar : ''} (il totale non può fare ${K})` : ''}</p>` : ''}
+      <div class="bid-picker">${bidButtons}</div>
+      ${scoreboardHTML(id)}
+    </div>
+  </div>`));
+
+  document.querySelectorAll('.bid-btn').forEach(btn=>{
+    btn.onclick = ()=>{
+      if(btn.disabled) return;
+      const val = parseInt(btn.dataset.val);
+      const wasLast = isLastBidder();
+      placeBid(id, val);
+      if(!wasLast){
+        game.phase = 'passToBid';
+        render();
+      }
+    };
+  });
+}
+
+// ---- Playing ----
+function renderPlaying(skipHandlers){
+  const id = currentPlayerToPlayId();
+  const p = playerById(id);
+  const hand = game.hands[id];
+
+  const tableHTML = game.table.length ? `<div class="table-cards">${game.table.map(t=>`
+    <div class="table-card-slot">${cardHTML(t.card,{})}<div class="table-card-name">${playerById(t.playerId).name}${t.jokerCall?` (${t.jokerCall})`:''}</div></div>
+  `).join('')}</div>` : `<div class="empty-table-msg">Nessuna carta ancora giocata in questa presa.</div>`;
+
+  app.appendChild(el(`<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
+    ${header()}
+    ${infoBarHTML()}
+    <div class="table-wrap"><div class="table-cards-container">${tableHTML}</div></div>
+    <div class="panel center-text">
+      <div class="section-title">${p.name}, tocca a te</div>
+      <p style="opacity:.75;font-size:13px;">Dichiarazione: <strong style="color:var(--gold-light)">${game.bids[id]}</strong> · Prese finora: <strong style="color:var(--gold-light)">${game.tricksWon[id]}</strong></p>
+      <div class="hand-row">${hand.map(c=>cardHTML(c,{clickable:!skipHandlers})).join('')}</div>
+      ${scoreboardHTML(id)}
+    </div>
+  </div>`));
+
+  if(skipHandlers) return;
+  document.querySelectorAll('.hand-row .card.clickable').forEach(cardEl=>{
+    cardEl.onclick = ()=>{
+      const cardId = cardEl.dataset.card;
+      const wasLastPlayer = game.turnPointer === game.playOrder.length-1;
+      playCard(id, cardId);
+      if(game.phase==='jokerChoice') return; // modal will handle
+      if(!wasLastPlayer && game.phase==='playing'){
+        game.phase = 'passToPlay';
+        render();
+      }
+    };
+  });
+}
+
+function renderBlindReveal(){
+  const tableHTML = `<div class="table-cards">${game.table.map(t=>`
+    <div class="table-card-slot">${cardHTML(t.card,{})}<div class="table-card-name">${playerById(t.playerId).name}</div></div>
+  `).join('')}</div>`;
+  app.appendChild(el(`<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
+    ${header()}
+    ${infoBarHTML()}
+    <div class="table-wrap"><div class="table-cards-container">${tableHTML}</div></div>
+    <div class="panel center-text">
+      <div class="section-title">Si rivela il Jolly...</div>
+    </div>
+  </div>`));
+}
+
+function renderJokerModal(){
+  const isBlind = game.phase==='blindJokerChoice';
+  const name = isBlind ? playerById(game.pendingJokerCard).name : playerById(game.pendingJokerCard.playerId).name;
+  const overlay = el(`<div class="modal-overlay">
+    <div class="panel" style="max-width:420px;">
+      <div class="section-title">${name}, il Jolly!</div>
+      <p class="center-text" style="opacity:.85;">Decidi se il Jolly vale come la carta più alta o più bassa di questa presa.</p>
+      <div class="joker-choice">
+        <button class="btn" id="jHigh">Più alta</button>
+        <button class="btn secondary" id="jLow">Più bassa</button>
+      </div>
+    </div>
+  </div>`);
+  document.body.appendChild(overlay);
+  document.getElementById('jHigh').onclick = ()=>{ overlay.remove(); confirmJokerChoice('alta'); afterJokerResume(); };
+  document.getElementById('jLow').onclick = ()=>{ overlay.remove(); confirmJokerChoice('bassa'); afterJokerResume(); };
+}
+
+function afterJokerResume(){
+  if(game.phase==='playing' || game.phase==='trickResult' || game.phase==='roundSummary' || game.phase==='gameEnd'){
+    if(game.phase==='playing'){
+      game.phase='passToPlay';
+    }
+  }
+  render();
+}
+
+function renderTrickResult(){
+  const winner = playerById(game.lastTrickWinner);
+  app.appendChild(el(`<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
+    ${header()}
+    ${infoBarHTML()}
+    <div class="table-wrap"><div class="table-cards">${game.table.map(t=>`
+      <div class="table-card-slot">${cardHTML(t.card,{})}<div class="table-card-name">${playerById(t.playerId).name}${t.jokerCall?` (${t.jokerCall})`:''}</div></div>
+    `).join('')}</div></div>
+    <div class="panel center-text">
+      <div class="section-title">${winner.name} si aggiudica la presa!</div>
+      <div class="btn-row"><button class="btn" id="contBtn">Continua</button></div>
+    </div>
+  </div>`));
+  document.getElementById('contBtn').onclick = ()=>{
+    nextTrickOrEndRound();
+  };
+}
+
+function renderRoundSummary(){
+  const rows = game.lastRoundSummary.map(s=>{
+    const deltaCls = s.delta===0 ? 'delta-zero' : 'delta-add';
+    return `<div class="round-summary-row">
+      <div><span class="name">${s.name}</span><div class="detail">dichiarato ${s.bid} · fatte ${s.won}</div></div>
+      <div class="${deltaCls}">${s.delta===0 ? '✓ 0' : '+'+s.delta}</div>
+    </div>`;
+  }).join('');
+  const newlyOut = game.players.filter(p=>p.eliminated && p.score>=7 && game.lastRoundSummary.some(s=>s.id===p.id));
+  const eliminatedNames = game.players.filter(p=>p.eliminated).map(p=>p.name);
+
+  app.appendChild(el(`<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
+    ${header()}
+    <div class="panel">
+      <div class="section-title">Fine Round ${game.roundNumber}</div>
+      ${rows}
+      ${eliminatedNames.length ? `<p class="center-text" style="color:var(--danger);font-weight:800;margin-top:12px;">Eliminati: ${eliminatedNames.join(', ')}</p>` : ''}
+      ${scoreboardHTML()}
+      <div class="btn-row"><button class="btn" id="nextBtn">Prossimo round</button></div>
+    </div>
+  </div>`));
+  document.getElementById('nextBtn').onclick = proceedAfterSummary;
+}
+
+function renderGameEnd(){
+  const winner = activePlayers()[0];
+  app.appendChild(el(`<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
+    ${header()}
+    <div class="panel center-text">
+      <div class="winner-banner">🏆 ${winner ? winner.name : '—'} vince la partita!</div>
+      ${scoreboardHTML()}
+      <div class="btn-row"><button class="btn" id="newGameBtn">Nuova partita</button></div>
+      <div class="center-text"><button class="rules-link" id="backHomeFromEnd">← Cambia modalità</button></div>
+    </div>
+  </div>`));
+  document.getElementById('newGameBtn').onclick = ()=>{ game=null; render(); };
+  document.getElementById('backHomeFromEnd').onclick = showHome;
+}
+
+// ============================================================
+// ============== HOME / MODE SELECTION ========================
+// ============================================================
+function showHome(){
+  stopPolling();
+  app.innerHTML = '';
+  app.appendChild(el(`<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
+    ${header()}
+    <div class="subtitle">Il gioco delle previsioni — 40 carte, nessuna pietà</div>
+    <div class="panel center-text">
+      <div class="section-title">Come vuoi giocare?</div>
+      <p style="opacity:.8;font-size:13.5px;">In locale passate un solo dispositivo a turno. Online ognuno usa il proprio, con la propria mano segreta.</p>
+      <div class="btn-row">
+        <button class="btn" id="pickLocalBtn">📱 Gioca in locale</button>
+        <button class="btn secondary" id="pickOnlineBtn">🌐 Gioca online</button>
+      </div>
+      ${!STORAGE_READY ? `<p style="font-size:12px;color:#e88;margin-top:14px;">La modalità online non è ancora configurata (manca il KVDB_BUCKET nel file). Puoi comunque giocare in locale.</p>` : ''}
+    </div>
+  </div>`));
+  document.getElementById('pickLocalBtn').onclick = ()=>{ game=null; render(); };
+  document.getElementById('pickOnlineBtn').onclick = ()=>{ renderOnlineJoinScreen(); };
+}
+
+// ============================================================
+// ============== ONLINE: PARAMETERIZED RULES ===================
+// (identical rules to local mode, but operate on a passed-in
+// `state` object instead of a global, and never touch the DOM)
+// ============================================================
+function rActivePlayers(state){ return state.players.filter(p=>!p.eliminated); }
+
+function rSeatOrderFromDealer(state){
+  const active = rActivePlayers(state);
+  const dealerIdx = active.findIndex(p=>p.seat===state.dealerSeat);
+  const order = [];
+  for(let i=1;i<=active.length;i++) order.push(active[(dealerIdx+i)%active.length]);
+  return order;
+}
+
+function rStartRound(state){
+  state.roundCardCount = state.roundCycle[state.roundCycleIndex];
+  const active = rActivePlayers(state);
+  const order = rSeatOrderFromDealer(state);
+  state.seatCircle = active.map(p=>p.id);
+  state.playOrder = order.map(p=>p.id);
+  state.bidOrder = order.map(p=>p.id);
+  const deck = shuffle(createDeck());
+  state.hands = {};
+  active.forEach((p,i)=>{ state.hands[p.id] = deck.slice(i*state.roundCardCount, (i+1)*state.roundCardCount); });
+  state.bids = {}; state.tricksWon = {};
+  active.forEach(p=>{ state.bids[p.id]=null; state.tricksWon[p.id]=0; });
+  state.table = [];
+  state.trickIndex = 0;
+  state.turnPointer = 0;
+  state.pendingJokerCard = null;
+  state.phase = 'bidding';
+}
+
+function rCurrentBidderId(state){ return state.bidOrder[state.turnPointer]; }
+function rCurrentPlayerToPlayId(state){ return state.playOrder[state.turnPointer]; }
+function rPlayerById(state,id){ return state.players.find(p=>p.id===id); }
+
+function rSumBidsSoFar(state){
+  let sum=0;
+  for(const id of state.bidOrder) if(state.bids[id]!==null) sum += state.bids[id];
+  return sum;
+}
+function rIsLastBidder(state){ return state.turnPointer === state.bidOrder.length-1; }
+function rValidBidChoices(state){
+  const K = state.roundCardCount;
+  const blind = K===1;
+  const range = blind ? [0,1] : Array.from({length:K+1},(_,i)=>i);
+  const sumSoFar = rSumBidsSoFar(state);
+  if(rIsLastBidder(state)) return range.filter(v=>sumSoFar+v!==K);
+  return range;
+}
+
+function rPlaceBid(state, playerId, value){
+  if(state.phase!=='bidding' || rCurrentBidderId(state)!==playerId) return;
+  if(!rValidBidChoices(state).includes(value)) return;
+  state.bids[playerId] = value;
+  state.turnPointer++;
+  if(state.turnPointer >= state.bidOrder.length){
+    state.turnPointer = 0;
+    if(state.roundCardCount===1) rAutoPlayBlindRound(state);
+    else state.phase = 'playing';
+  }
+}
+
+function rAutoPlayBlindRound(state){
+  state.table = [];
+  for(const id of state.playOrder){
+    const card = state.hands[id][0];
+    state.table.push({playerId:id, card, jokerCall:null});
+  }
+  const jokerEntry = state.table.find(t=>t.card.suit==='jolly');
+  if(jokerEntry){
+    state.phase = 'blindJokerChoice';
+    state.pendingJokerCard = jokerEntry.playerId;
+  } else {
+    rResolveTrick(state);
+  }
+}
+
+function rPlayCard(state, playerId, cardId){
+  if(state.phase!=='playing' || rCurrentPlayerToPlayId(state)!==playerId) return;
+  const hand = state.hands[playerId];
+  const idx = hand.findIndex(c=>c.id===cardId);
+  if(idx===-1) return;
+  const card = hand[idx];
+  if(card.suit==='jolly'){
+    state.pendingJokerCard = {playerId, cardIdx:idx};
+    state.phase = 'jokerChoice';
+    return;
+  }
+  rFinalizePlay(state, playerId, idx, null);
+}
+
+function rFinalizePlay(state, playerId, cardIdx, jokerCall){
+  const hand = state.hands[playerId];
+  const card = hand.splice(cardIdx,1)[0];
+  state.table.push({playerId, card, jokerCall});
+  state.turnPointer++;
+  if(state.turnPointer >= state.playOrder.length) rResolveTrick(state);
+  else state.phase = 'playing';
+}
+
+function rConfirmJokerChoice(state, ownerId, choice){
+  if(state.phase==='blindJokerChoice'){
+    if(state.pendingJokerCard!==ownerId) return;
+    const entry = state.table.find(t=>t.playerId===state.pendingJokerCard);
+    entry.jokerCall = choice;
+    state.pendingJokerCard = null;
+    rResolveTrick(state);
+    return;
+  }
+  if(state.phase!=='jokerChoice' || !state.pendingJokerCard || state.pendingJokerCard.playerId!==ownerId) return;
+  const {playerId, cardIdx} = state.pendingJokerCard;
+  state.pendingJokerCard = null;
+  rFinalizePlay(state, playerId, cardIdx, choice);
+}
+
+function rEffectiveRank(entry){
+  if(entry.card.suit==='jolly') return entry.jokerCall==='alta' ? Infinity : -Infinity;
+  return rankOf(entry.card);
+}
+
+function rResolveTrick(state){
+  let winner = state.table[0];
+  for(const entry of state.table) if(rEffectiveRank(entry) > rEffectiveRank(winner)) winner = entry;
+  state.tricksWon[winner.playerId]++;
+  state.lastTrickWinner = winner.playerId;
+  state.phase = 'trickResult';
+}
+
+function rNextTrickOrEndRound(state){
+  if(state.phase!=='trickResult') return;
+  state.table = [];
+  state.trickIndex++;
+  state.turnPointer = 0;
+  if(state.trickIndex >= state.roundCardCount){
+    rEndRound(state);
+  } else {
+    state.playOrder = rotateCircleFrom(state.seatCircle, state.lastTrickWinner);
+    state.phase = 'playing';
+  }
+}
+
+function rEndRound(state){
+  const active = rActivePlayers(state);
+  const summary = active.map(p=>{
+    const bid = state.bids[p.id], won = state.tricksWon[p.id], delta = Math.abs(bid-won);
+    p.score += delta;
+    return {id:p.id, name:p.name, bid, won, delta, newScore:p.score};
+  });
+  state.lastRoundSummary = summary;
+  active.filter(p=>p.score>=7).forEach(p=>p.eliminated=true);
+  state.phase = 'roundSummary';
+}
+
+function rProceedAfterSummary(state){
+  if(state.phase!=='roundSummary') return;
+  const remaining = rActivePlayers(state);
+  if(remaining.length<=1){ state.phase='gameEnd'; return; }
+  const seats = state.players.map(p=>p.seat).sort((a,b)=>a-b);
+  let idx = seats.indexOf(state.dealerSeat);
+  let next;
+  for(let i=1;i<=seats.length;i++){
+    const cs = seats[(idx+i)%seats.length];
+    const cand = state.players.find(p=>p.seat===cs);
+    if(!cand.eliminated){ next=cs; break; }
+  }
+  state.dealerSeat = next;
+  state.roundCycleIndex = (state.roundCycleIndex+1)%state.roundCycle.length;
+  state.roundNumber++;
+  rStartRound(state);
+}
+
+// ============================================================
+// ============== ONLINE: ROOM / STORAGE HELPERS =================
+// ============================================================
+const ROOM_PREFIX = 'dalnegro_room_';
+const IDENTITY_KEY = 'dalnegro_identity';
+
+let og = null;          // the online room/game state (mirror of shared storage)
+let myId = null;
+let myRoomCode = null;
+let myName = null;
+let pollTimer = null;
+let autoAdvanceScheduled = false;
+
+function genId(){ return 'p_' + Math.random().toString(36).slice(2,9); }
+function genRoomCode(){
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no O/0/I/1/L, less mix-ups
+  let s=''; for(let i=0;i<5;i++) s += chars[Math.floor(Math.random()*chars.length)];
+  return s;
+}
+function newRoomState(code, hostName, hostId){
+  return {
+    roomCode: code,
+    hostId: hostId,
+    players: [{id:hostId, name:hostName, seat:0, score:0, eliminated:false}],
+    dealerSeat: 0,
+    roundCycle: [5,4,3,2,1],
+    roundCycleIndex: 0,
+    roundCardCount: 5,
+    roundNumber: 1,
+    hands:{}, bids:{}, bidOrder:[], tricksWon:{}, playOrder:[],
+    turnPointer:0, table:[], trickIndex:0,
+    phase:'lobby',
+    lastRoundSummary:null, pendingJokerCard:null, seatCircle:[],
+    lastTrickWinner:null,
+  };
+}
+
+async function loadRoom(code){
+  try{
+    const res = await window.storage.get(ROOM_PREFIX+code, true);
+    return res ? JSON.parse(res.value) : null;
+  }catch(e){ return null; }
+}
+async function saveRoom(state){
+  await window.storage.set(ROOM_PREFIX+state.roomCode, JSON.stringify(state), true);
+}
+async function loadIdentity(){
+  try{
+    const res = await window.storage.get(IDENTITY_KEY, false);
+    return res ? JSON.parse(res.value) : null;
+  }catch(e){ return null; }
+}
+async function saveIdentity(obj){
+  try{ await window.storage.set(IDENTITY_KEY, JSON.stringify(obj), false); }catch(e){}
+}
+async function clearIdentity(){
+  try{ await window.storage.delete(IDENTITY_KEY, false); }catch(e){}
+}
+
+function stopPolling(){ if(pollTimer){ clearInterval(pollTimer); pollTimer=null; } }
+function startPolling(){
+  stopPolling();
+  pollTimer = setInterval(pollRoom, 1500);
+}
+async function pollRoom(){
+  if(!myRoomCode) return;
+  const fresh = await loadRoom(myRoomCode);
+  if(!fresh) return;
+  const changed = JSON.stringify(fresh) !== JSON.stringify(og);
+  og = fresh;
+  if(changed) renderOnline();
+  maybeHostAutoAdvance();
+}
+function maybeHostAutoAdvance(){
+  if(!og || og.hostId!==myId) return;
+  if(og.phase==='trickResult' && !autoAdvanceScheduled){
+    autoAdvanceScheduled = true;
+    setTimeout(async ()=>{
+      autoAdvanceScheduled = false;
+      const fresh = await loadRoom(myRoomCode);
+      if(fresh && fresh.phase==='trickResult'){
+        rNextTrickOrEndRound(fresh);
+        await saveRoom(fresh);
+        og = fresh;
+        renderOnline();
+      }
+    }, 2200);
+  }
+}
+
+// generic helper: fetch latest room, apply a mutation, save, refresh local view
+async function actOnline(mutatorFn){
+  const fresh = await loadRoom(myRoomCode);
+  if(!fresh) return;
+  mutatorFn(fresh);
+  await saveRoom(fresh);
+  og = fresh;
+  renderOnline();
+}
+
+async function tryAutoRejoin(){
+  if(!STORAGE_READY) return false;
+  const identity = await loadIdentity();
+  if(!identity) return false;
+  const room = await loadRoom(identity.roomCode);
+  if(!room || !room.players.find(p=>p.id===identity.playerId)){
+    await clearIdentity();
+    return false;
+  }
+  myId = identity.playerId; myRoomCode = identity.roomCode; myName = identity.playerName;
+  og = room;
+  startPolling();
+  return true;
+}
+
+async function createOrJoinRoom(codeRaw, nameRaw){
+  let code = (codeRaw||'').trim().toUpperCase();
+  const name = (nameRaw||'').trim() || 'Giocatore';
+  if(!code) code = genRoomCode();
+  let room = await loadRoom(code);
+  const newId = genId();
+  let finalName = name;
+  if(!room){
+    room = newRoomState(code, finalName, newId);
+    await saveRoom(room);
+  } else {
+    if(room.phase !== 'lobby') throw new Error('La partita in questa stanza è già iniziata. Prova un altro codice o aspetta la prossima partita.');
+    if(room.players.length >= 8) throw new Error('Questa stanza è già piena (max 8 giocatori).');
+    let n = 2;
+    while(room.players.some(p=>p.name===finalName)){ finalName = name+' ('+n+')'; n++; }
+    room.players.push({id:newId, name:finalName, seat:room.players.length, score:0, eliminated:false});
+    await saveRoom(room);
+  }
+  myId = newId; myRoomCode = code; myName = finalName; og = room;
+  await saveIdentity({roomCode:code, playerId:newId, playerName:finalName});
+  startPolling();
+}
+
+// ============================================================
+// ============== ONLINE: RENDERING =============================
+// ============================================================
+function renderOnlineJoinScreen(errorMsg){
+  stopPolling();
+  app.innerHTML = '';
+  app.appendChild(el(`<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
+    ${header()}
+    <div class="subtitle">Modalità online — ognuno con il proprio dispositivo</div>
+    <div class="panel">
+      <div class="section-title">Entra in una partita</div>
+      <label class="field-label">Il tuo nome</label>
+      <input type="text" id="onlineName" placeholder="Il tuo nome" value="${myName||''}">
+      <label class="field-label">Codice stanza</label>
+      <input type="text" id="onlineCode" placeholder="Lascia vuoto per crearne una nuova" style="text-transform:uppercase;">
+      ${errorMsg?`<p style="color:#e88;font-size:13px;margin-top:8px;">${errorMsg}</p>`:''}
+      <div class="btn-row">
+        <button class="btn" id="joinBtn">Entra / Crea stanza</button>
+      </div>
+      <p style="font-size:12px;opacity:.65;margin-top:10px;">Lascia il codice vuoto per creare una stanza nuova da condividere con gli altri. Chi si unisce dopo deve inserire lo stesso codice.</p>
+      <div class="center-text"><button class="rules-link" id="backHomeBtn">← Torna alla scelta modalità</button></div>
+    </div>
+  </div>`));
+  document.getElementById('joinBtn').onclick = async ()=>{
+    const name = document.getElementById('onlineName').value;
+    const code = document.getElementById('onlineCode').value;
+    const btn = document.getElementById('joinBtn');
+    btn.disabled = true; btn.textContent = 'Attendere...';
+    try{
+      await createOrJoinRoom(code, name);
+      renderOnline();
+    }catch(e){
+      renderOnlineJoinScreen(e.message || 'Errore, riprova.');
+    }
+  };
+  document.getElementById('backHomeBtn').onclick = showHome;
+}
+
+function renderOnline(){
+  if(!og){ renderOnlineJoinScreen(); return; }
+  switch(og.phase){
+    case 'lobby': renderLobby(); break;
+    case 'bidding': renderOnlineBidding(); break;
+    case 'playing': renderOnlinePlaying(); break;
+    case 'jokerChoice':
+    case 'blindJokerChoice': renderOnlineJoker(); break;
+    case 'trickResult': renderOnlineTrickResult(); break;
+    case 'roundSummary': renderOnlineRoundSummary(); break;
+    case 'gameEnd': renderOnlineGameEnd(); break;
+    default: renderOnlineJoinScreen();
+  }
+}
+
+function onlineInfoBar(){
+  return `<div class="info-bar">
+    <div class="chip">Round <span class="v">${og.roundNumber}</span></div>
+    <div class="chip">Carte <span class="v">${og.roundCardCount}</span></div>
+    <div class="chip">Presa <span class="v">${og.trickIndex+1}/${og.roundCardCount}</span></div>
+    <div class="chip">Stanza <span class="v">${og.roomCode}</span></div>
+  </div>`;
+}
+function onlineScoreboard(highlightId){
+  const rows = og.players.slice().sort((a,b)=>a.seat-b.seat).map(p=>{
+    const cls=[]; if(p.eliminated) cls.push('eliminated'); if(p.id===highlightId) cls.push('current-turn');
+    const pipCls = p.score>=5 ? 'score-pip danger' : 'score-pip';
+    return `<tr class="${cls.join(' ')}"><td>${p.name}${p.id===myId?' (tu)':''}</td><td><span class="${pipCls}">${p.score}</span></td></tr>`;
+  }).join('');
+  return `<table class="scoreboard"><thead><tr><th>Giocatore</th><th>Punti</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function renderLobby(){
+  const isHost = og.hostId===myId;
+  const playersHTML = og.players.map((p,i)=>`<div class="name-row"><div class="seat-badge">${i+1}</div><div>${p.name}${p.id===og.hostId?' 👑':''}${p.id===myId?' <em>(tu)</em>':''}</div></div>`).join('');
+  app.innerHTML = '';
+  app.appendChild(el(`<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
+    ${header()}
+    <div class="panel">
+      <div class="section-title">Sala d'attesa</div>
+      <p class="center-text" style="opacity:.85;">Codice stanza:</p>
+      <p class="center-text" style="color:var(--gold-light);font-size:28px;letter-spacing:.15em;font-family:'Cinzel',serif;font-weight:700;">${og.roomCode}</p>
+      <p class="center-text" style="font-size:12.5px;opacity:.7;">Condividi questo codice con gli altri giocatori.</p>
+      <div class="name-inputs" style="margin-top:14px;">${playersHTML}</div>
+      ${isHost
+        ? `<div class="btn-row"><button class="btn" id="startOnlineBtn" ${og.players.length<2?'disabled':''}>Inizia partita (${og.players.length}/8)</button></div>
+           ${og.players.length<2 ? `<p class="center-text" style="font-size:12px;opacity:.6;">Servono almeno 2 giocatori.</p>` : ''}`
+        : `<p class="center-text" style="opacity:.8;margin-top:14px;">⏳ In attesa che l'host avvii la partita...</p>`}
+      <div class="center-text"><button class="rules-link" id="leaveBtn">Esci dalla stanza</button></div>
+    </div>
+  </div>`));
+  if(isHost){
+    document.getElementById('startOnlineBtn').onclick = ()=>{
+      if(og.players.length<2) return;
+      actOnline(state=>{ rStartRound(state); });
+    };
+  }
+  document.getElementById('leaveBtn').onclick = async ()=>{
+    await actOnline(state=>{
+      state.players = state.players.filter(p=>p.id!==myId);
+      if(state.players.length && !state.players.find(p=>p.id===state.hostId)){
+        state.hostId = state.players[0].id;
+      }
+    });
+    await clearIdentity();
+    stopPolling();
+    og=null; myId=null; myRoomCode=null;
+    showHome();
+  };
+}
+
+function renderOnlineBidding(){
+  const id = rCurrentBidderId(og);
+  const isMe = id===myId;
+  const K = og.roundCardCount;
+  const blind = K===1;
+  const myHand = og.hands[myId] || [];
+  const sumSoFar = rSumBidsSoFar(og);
+  const isLast = rIsLastBidder(og);
+
+  const declaredList = og.bidOrder.map(pid=>{
+    const p = rPlayerById(og,pid);
+    const b = og.bids[pid];
+    const label = b===null ? '…' : (blind ? (b===1?'Prendo':'Non prendo') : b);
+    return `<div class="round-summary-row"><span class="name">${p.name}${pid===myId?' (tu)':''}</span><span>${label}</span></div>`;
+  }).join('');
+
+  let handSection;
+  if(blind){
+    const others = og.playOrder.filter(pid=>pid!==myId).map(pid=>{
+      const c = og.hands[pid][0];
+      return `<div class="table-card-slot">${cardHTML(c,{small:true})}<div class="table-card-name">${rPlayerById(og,pid).name}</div></div>`;
+    }).join('');
+    handSection = `<p class="center-text" style="opacity:.8;font-size:13px;">Le carte degli altri (la tua è nascosta):</p>
+      <div class="hand-row">${others}</div>
+      <div class="hand-row">${cardBackHTML(true)}</div>`;
+  } else {
+    handSection = `<p class="center-text" style="opacity:.8;font-size:13px;">Le tue carte:</p>
+      <div class="hand-row">${myHand.map(c=>cardHTML(c,{small:true})).join('')}</div>`;
+  }
+
+  let actionSection;
+  if(isMe){
+    let bidButtons;
+    if(blind){
+      bidButtons = [0,1].map(v=>{
+        const would = sumSoFar+v;
+        const disabled = isLast && would===1;
+        return `<button class="bid-btn" data-val="${v}" ${disabled?'disabled':''}>${v===1?'Prendo':'No'}</button>`;
+      }).join('');
+    } else {
+      bidButtons = Array.from({length:K+1}).map((_,v)=>{
+        const would = sumSoFar+v;
+        const disabled = isLast && would===K;
+        return `<button class="bid-btn" data-val="${v}" ${disabled?'disabled':''}>${v}</button>`;
+      }).join('');
+    }
+    actionSection = `<div class="section-title" style="margin-top:16px;">🎯 Quante prese farai?</div>
+      <div class="bid-picker">${bidButtons}</div>`;
+  } else {
+    actionSection = `<p class="center-text" style="opacity:.8;margin-top:16px;">⏳ In attesa che <strong style="color:var(--gold-light)">${rPlayerById(og,id).name}</strong> dichiari...</p>`;
+  }
+
+  app.innerHTML = '';
+  app.appendChild(el(`<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
+    ${header()}
+    ${onlineInfoBar()}
+    <div class="panel center-text">
+      ${handSection}
+      <div style="margin-top:14px;">${declaredList}</div>
+      ${actionSection}
+      ${onlineScoreboard(id)}
+    </div>
+  </div>`));
+
+  if(isMe){
+    document.querySelectorAll('.bid-btn').forEach(btn=>{
+      btn.onclick = ()=>{
+        if(btn.disabled) return;
+        const val = parseInt(btn.dataset.val);
+        actOnline(state=>{ rPlaceBid(state, myId, val); });
+      };
+    });
+  }
+}
+
+function renderOnlinePlaying(skipHandlers){
+  const id = rCurrentPlayerToPlayId(og);
+  const isMe = id===myId;
+  const myHand = og.hands[myId] || [];
+
+  const tableHTML = og.table.length ? `<div class="table-cards">${og.table.map(t=>`
+    <div class="table-card-slot">${cardHTML(t.card,{})}<div class="table-card-name">${rPlayerById(og,t.playerId).name}${t.jokerCall?` (${t.jokerCall})`:''}</div></div>
+  `).join('')}</div>` : `<div class="empty-table-msg">Nessuna carta ancora giocata in questa presa.</div>`;
+
+  app.innerHTML = '';
+  app.appendChild(el(`<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
+    ${header()}
+    ${onlineInfoBar()}
+    <div class="table-wrap"><div class="table-cards-container">${tableHTML}</div></div>
+    <div class="panel center-text">
+      <p style="opacity:.75;font-size:13px;">La tua dichiarazione: <strong style="color:var(--gold-light)">${og.bids[myId]}</strong> · Le tue prese finora: <strong style="color:var(--gold-light)">${og.tricksWon[myId]||0}</strong></p>
+      <p class="center-text" style="opacity:.85;">${isMe ? '🎯 Tocca a te giocare!' : `⏳ In attesa che <strong style="color:var(--gold-light)">${rPlayerById(og,id).name}</strong> giochi...`}</p>
+      <div class="hand-row">${myHand.map(c=>cardHTML(c,{clickable:isMe && !skipHandlers})).join('')}</div>
+      ${onlineScoreboard(id)}
+    </div>
+  </div>`));
+
+  if(isMe && !skipHandlers){
+    document.querySelectorAll('.hand-row .card.clickable').forEach(cardEl=>{
+      cardEl.onclick = ()=>{
+        const cardId = cardEl.dataset.card;
+        actOnline(state=>{ rPlayCard(state, myId, cardId); });
+      };
+    });
+  }
+}
+
+function renderOnlineBlindRevealUnderlying(){
+  const tableHTML = `<div class="table-cards">${og.table.map(t=>`
+    <div class="table-card-slot">${cardHTML(t.card,{})}<div class="table-card-name">${rPlayerById(og,t.playerId).name}</div></div>
+  `).join('')}</div>`;
+  app.innerHTML = '';
+  app.appendChild(el(`<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
+    ${header()}
+    ${onlineInfoBar()}
+    <div class="table-wrap"><div class="table-cards-container">${tableHTML}</div></div>
+    <div class="panel center-text"><div class="section-title">Si rivela il Jolly...</div></div>
+  </div>`));
+}
+
+function renderOnlineJoker(){
+  const ownerId = og.phase==='blindJokerChoice' ? og.pendingJokerCard : og.pendingJokerCard.playerId;
+  const isMe = ownerId===myId;
+  if(og.phase==='jokerChoice') renderOnlinePlaying(true);
+  else renderOnlineBlindRevealUnderlying();
+
+  if(isMe){
+    const overlay = el(`<div class="modal-overlay"><div class="panel" style="max-width:420px;">
+      <div class="section-title">Il Jolly!</div>
+      <p class="center-text" style="opacity:.85;">Decidi se il Jolly vale come la carta più alta o più bassa di questa presa.</p>
+      <div class="joker-choice">
+        <button class="btn" id="jHigh">Più alta</button>
+        <button class="btn secondary" id="jLow">Più bassa</button>
+      </div>
+    </div></div>`);
+    document.body.appendChild(overlay);
+    document.getElementById('jHigh').onclick = ()=>{ overlay.remove(); actOnline(state=>{ rConfirmJokerChoice(state, myId, 'alta'); }); };
+    document.getElementById('jLow').onclick = ()=>{ overlay.remove(); actOnline(state=>{ rConfirmJokerChoice(state, myId, 'bassa'); }); };
+  } else {
+    const overlay = el(`<div class="modal-overlay"><div class="panel" style="max-width:420px;">
+      <div class="section-title">Il Jolly!</div>
+      <p class="center-text" style="opacity:.85;">${rPlayerById(og,ownerId).name} sta decidendo se vale alta o bassa...</p>
+    </div></div>`);
+    document.body.appendChild(overlay);
+  }
+}
+
+function renderOnlineTrickResult(){
+  const winner = rPlayerById(og, og.lastTrickWinner);
+  const isHost = og.hostId===myId;
+  app.innerHTML = '';
+  app.appendChild(el(`<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
+    ${header()}
+    ${onlineInfoBar()}
+    <div class="table-wrap"><div class="table-cards">${og.table.map(t=>`
+      <div class="table-card-slot">${cardHTML(t.card,{})}<div class="table-card-name">${rPlayerById(og,t.playerId).name}${t.jokerCall?` (${t.jokerCall})`:''}</div></div>
+    `).join('')}</div></div>
+    <div class="panel center-text">
+      <div class="section-title">${winner.name}${winner.id===myId?' (tu)':''} si aggiudica la presa!</div>
+      ${isHost
+        ? `<div class="btn-row"><button class="btn" id="contBtn">Continua ora</button></div><p style="font-size:12px;opacity:.6;">Si continua automaticamente tra pochi secondi...</p>`
+        : `<p class="center-text" style="opacity:.7;font-size:13px;">Si passa alla prossima mano tra poco...</p>`}
+    </div>
+  </div>`));
+  if(isHost){
+    document.getElementById('contBtn').onclick = ()=>{ actOnline(state=>{ rNextTrickOrEndRound(state); }); };
+  }
+}
+
+function renderOnlineRoundSummary(){
+  const isHost = og.hostId===myId;
+  const rows = og.lastRoundSummary.map(s=>{
+    const deltaCls = s.delta===0?'delta-zero':'delta-add';
+    return `<div class="round-summary-row"><div><span class="name">${s.name}${s.id===myId?' (tu)':''}</span><div class="detail">dichiarato ${s.bid} · fatte ${s.won}</div></div><div class="${deltaCls}">${s.delta===0?'✓ 0':'+'+s.delta}</div></div>`;
+  }).join('');
+  const eliminatedNames = og.players.filter(p=>p.eliminated).map(p=>p.name);
+  app.innerHTML = '';
+  app.appendChild(el(`<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
+    ${header()}
+    <div class="panel">
+      <div class="section-title">Fine Round ${og.roundNumber}</div>
+      ${rows}
+      ${eliminatedNames.length ? `<p class="center-text" style="color:var(--danger);font-weight:800;margin-top:12px;">Eliminati: ${eliminatedNames.join(', ')}</p>` : ''}
+      ${onlineScoreboard()}
+      ${isHost
+        ? `<div class="btn-row"><button class="btn" id="nextBtn">Prossimo round</button></div>`
+        : `<p class="center-text" style="opacity:.7;margin-top:10px;">⏳ In attesa che l'host avvii il prossimo round...</p>`}
+    </div>
+  </div>`));
+  if(isHost){
+    document.getElementById('nextBtn').onclick = ()=>{ actOnline(state=>{ rProceedAfterSummary(state); }); };
+  }
+}
+
+function renderOnlineGameEnd(){
+  const isHost = og.hostId===myId;
+  const winner = rActivePlayers(og)[0];
+  app.innerHTML = '';
+  app.appendChild(el(`<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
+    ${header()}
+    <div class="panel center-text">
+      <div class="winner-banner">🏆 ${winner?winner.name:'—'}${winner&&winner.id===myId?' (tu!)':''} vince la partita!</div>
+      ${onlineScoreboard()}
+      ${isHost
+        ? `<div class="btn-row"><button class="btn" id="rematchBtn">Rivincita (stessi giocatori)</button></div>`
+        : `<p class="center-text" style="opacity:.7;margin-top:10px;">⏳ In attesa che l'host avvii una rivincita...</p>`}
+      <div class="center-text"><button class="rules-link" id="leaveGameBtn">Esci dalla stanza</button></div>
+    </div>
+  </div>`));
+  if(isHost){
+    document.getElementById('rematchBtn').onclick = ()=>{
+      actOnline(state=>{
+        state.players.forEach(p=>{ p.score=0; p.eliminated=false; });
+        state.dealerSeat = state.players[0].seat;
+        state.roundCycleIndex = 0;
+        state.roundNumber = 1;
+        state.phase = 'lobby';
+      });
+    };
+  }
+  document.getElementById('leaveGameBtn').onclick = async ()=>{
+    stopPolling();
+    await clearIdentity();
+    og=null; myId=null; myRoomCode=null;
+    showHome();
+  };
+}
+
+// ============================================================
+// ============== BOOT ===========================================
+// ============================================================
+async function boot(){
+  const rejoined = await tryAutoRejoin();
+  if(rejoined){ renderOnline(); return; }
+  showHome();
+}
+boot();
+</script>
+</body>
+</html>
