@@ -199,9 +199,23 @@
   .presence-dot{ display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; vertical-align:middle; }
   .presence-dot.online{ background:#5fbf6f; box-shadow:0 0 4px #5fbf6f; }
   .presence-dot.offline{ background:#8a8a8a; }
-  .kick-btn{ background:rgba(180,60,60,.25); border:1px solid rgba(220,120,120,.5); color:#f2b8b8; width:22px; height:22px; border-radius:50%; font-size:12px; line-height:1; cursor:pointer; }
+  .kick-btn{ background:rgba(180,60,60,.25); border:1px solid rgba(220,120,120,.5); color:#f2b8b8; width:22px; height:22px; min-width:22px; border-radius:50%; font-size:12px; line-height:1; cursor:pointer; flex-shrink:0; }
   .kick-btn:hover{ background:rgba(180,60,60,.5); }
-  .name-row .presence-dot{ margin-right:4px; }
+
+  #globalToolbar{ position:fixed; top:calc(10px + env(safe-area-inset-top)); right:calc(10px + env(safe-area-inset-right)); display:flex; gap:8px; z-index:1000; }
+  .icon-btn{ width:36px; height:36px; border-radius:50%; border:1px solid var(--gold); background:rgba(13,50,38,.9); color:var(--gold-light); font-size:15px; cursor:pointer; display:flex; align-items:center; justify-content:center; -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); padding:0; }
+  .icon-btn:hover{ background:rgba(26,86,64,.95); }
+  .icon-btn:active{ transform:scale(.94); }
+
+  #playersPanel{ position:fixed; top:calc(54px + env(safe-area-inset-top)); right:calc(10px + env(safe-area-inset-right)); width:200px; max-height:56vh; overflow-y:auto; background:rgba(11,42,32,.96); border:1px solid var(--gold); border-radius:12px; padding:10px; z-index:999; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); box-shadow:0 8px 24px rgba(0,0,0,.4); }
+  #playersPanel .pp-title{ font-family:'Cinzel',serif; color:var(--gold-light); font-size:12.5px; font-weight:700; margin-bottom:8px; text-align:center; letter-spacing:.04em; text-transform:uppercase; }
+  #playersPanel .pp-row{ display:flex; align-items:center; gap:6px; padding:6px 2px; border-bottom:1px solid rgba(255,255,255,.08); font-size:12.5px; }
+  #playersPanel .pp-row:last-child{ border-bottom:none; }
+  #playersPanel .pp-name{ flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #playersPanel .pp-tag{ opacity:.55; font-size:11px; flex-shrink:0; }
+  @media (max-width:420px){
+    #playersPanel{ width:168px; }
+  }
   .score-pip{
     display:inline-block; min-width:26px; padding:2px 6px; border-radius:12px; font-weight:800;
     background:rgba(255,255,255,.08);
@@ -242,6 +256,12 @@
 </style>
 </head>
 <body>
+<div id="globalToolbar">
+  <button id="playersToggleBtn" class="icon-btn" title="Giocatori" style="display:none;">👥</button>
+  <button id="homeIconBtn" class="icon-btn" title="Schermata iniziale">🏠</button>
+  <button id="quitIconBtn" class="icon-btn" title="Esci dal gioco">✕</button>
+</div>
+<div id="playersPanel" style="display:none;"></div>
 <div id="app"></div>
 
 <script>
@@ -1006,6 +1026,7 @@ function renderGameEnd(){
 function showHome(){
   stopPolling();
   stopHeartbeat();
+  hidePlayersPanel();
   app.innerHTML = '';
   app.appendChild(el(`<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
     ${header()}
@@ -1205,13 +1226,17 @@ function rIsConnected(state, playerId){
   return !!t && (Date.now()-t < PRESENCE_STALE_MS);
 }
 
-// --- Espulsione di un giocatore da parte dell'host ---
-function rKickPlayer(state, targetId){
-  const target = state.players.find(p=>p.id===targetId);
+// --- Rimozione di un giocatore dalla partita in corso (espulsione o uscita volontaria) ---
+function rRemovePlayerAndContinue(state, playerId, reasonFlag){
+  const target = state.players.find(p=>p.id===playerId);
   if(!target || target.eliminated) return;
-  if(targetId === state.hostId) return; // l'host non può espellere se stesso
   target.eliminated = true;
-  target.kicked = true;
+  target[reasonFlag] = true;
+
+  if(playerId === state.hostId){
+    const nextHost = state.players.find(p=>p.id!==playerId && !p.eliminated);
+    if(nextHost) state.hostId = nextHost.id;
+  }
 
   if(state.phase==='lobby' || state.phase==='gameEnd'){
     return; // niente round in corso da sistemare
@@ -1226,6 +1251,17 @@ function rKickPlayer(state, targetId){
   const remaining = rActivePlayers(state);
   if(remaining.length<=1){ state.phase='gameEnd'; return; }
   rStartRound(state);
+}
+
+// --- Espulsione di un giocatore da parte dell'host ---
+function rKickPlayer(state, targetId){
+  if(targetId === state.hostId) return; // l'host non può essere espulso da altri (può solo auto-uscire)
+  rRemovePlayerAndContinue(state, targetId, 'kicked');
+}
+
+// --- Uscita volontaria (chi esce può essere anche l'host) ---
+function rSelfLeave(state, playerId){
+  rRemovePlayerAndContinue(state, playerId, 'left');
 }
 
 // ============================================================
@@ -1446,7 +1482,8 @@ function renderOnlineJoinScreen(errorMsg){
 }
 
 function renderOnline(){
-  if(!og){ renderOnlineJoinScreen(); return; }
+  if(!og){ hidePlayersPanel(); renderOnlineJoinScreen(); return; }
+  renderPlayersPanel();
   const me = rPlayerById(og, myId);
   if(me && me.kicked){ renderKickedScreen(); return; }
   switch(og.phase){
@@ -1462,9 +1499,41 @@ function renderOnline(){
   }
 }
 
+// ============================================================
+// ====== PANNELLO GIOCATORI (mini finestra a destra) ===========
+// ============================================================
+let playersPanelOpen = false;
+function hidePlayersPanel(){
+  playersPanelOpen = false;
+  const panel = document.getElementById('playersPanel');
+  const toggleBtn = document.getElementById('playersToggleBtn');
+  if(panel) panel.style.display = 'none';
+  if(toggleBtn) toggleBtn.style.display = 'none';
+}
+function renderPlayersPanel(){
+  const panel = document.getElementById('playersPanel');
+  const toggleBtn = document.getElementById('playersToggleBtn');
+  if(!og || !panel || !toggleBtn) return;
+  toggleBtn.style.display = 'flex';
+  const isHost = og.hostId===myId;
+  const rows = og.players.slice().sort((a,b)=>a.seat-b.seat).map(p=>{
+    const connected = rIsConnected(og, p.id);
+    const dot = `<span class="presence-dot ${connected?'online':'offline'}" title="${connected?'Connesso':'Non connesso di recente'}"></span>`;
+    const tag = p.kicked ? '<span class="pp-tag">espulso</span>'
+      : (p.left ? '<span class="pp-tag">uscito</span>'
+      : (p.eliminated ? '<span class="pp-tag">eliminato</span>' : ''));
+    const canKick = isHost && p.id!==myId && !p.kicked && !p.left && !p.eliminated;
+    const kickBtn = canKick ? `<button class="kick-btn" data-kick-id="${p.id}" title="Espelli ${p.name}">✕</button>` : '';
+    return `<div class="pp-row">${dot}<span class="pp-name">${p.name}${p.id===myId?' (tu)':''}${p.id===og.hostId?' 👑':''}</span>${tag}${kickBtn}</div>`;
+  }).join('');
+  panel.innerHTML = `<div class="pp-title">Giocatori (${og.players.length})</div>${rows}`;
+  panel.style.display = playersPanelOpen ? 'block' : 'none';
+}
+
 function renderKickedScreen(){
   stopPolling();
   stopHeartbeat();
+  hidePlayersPanel();
   app.innerHTML = '';
   app.appendChild(el(`<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
     ${header()}
@@ -1490,31 +1559,21 @@ function onlineInfoBar(){
   </div>`;
 }
 function onlineScoreboard(highlightId){
-  const isHost = og.hostId===myId;
   const rows = og.players.slice().sort((a,b)=>a.seat-b.seat).map(p=>{
     const cls=[]; if(p.eliminated) cls.push('eliminated'); if(p.id===highlightId) cls.push('current-turn');
     const pipCls = p.score>=5 ? 'score-pip danger' : 'score-pip';
-    const connected = rIsConnected(og, p.id);
-    const dot = `<span class="presence-dot ${connected?'online':'offline'}" title="${connected?'Connesso':'Non connesso di recente'}"></span>`;
     const statusLabel = p.kicked
       ? ' <em style="opacity:.6;font-size:11px;">(espulso)</em>'
-      : (p.eliminated ? ' <em style="opacity:.6;font-size:11px;">(eliminato)</em>' : '');
-    const canKick = isHost && p.id!==myId && p.id!==og.hostId && !p.kicked;
-    const kickBtn = canKick ? `<button class="kick-btn" data-kick-id="${p.id}" title="Espelli ${p.name}">✕</button>` : '';
-    return `<tr class="${cls.join(' ')}"><td>${dot}${p.name}${p.id===myId?' (tu)':''}${statusLabel}</td><td><span class="${pipCls}">${p.score}</span></td><td>${kickBtn}</td></tr>`;
+      : (p.left ? ' <em style="opacity:.6;font-size:11px;">(uscito)</em>'
+      : (p.eliminated ? ' <em style="opacity:.6;font-size:11px;">(eliminato)</em>' : ''));
+    return `<tr class="${cls.join(' ')}"><td>${p.name}${p.id===myId?' (tu)':''}${statusLabel}</td><td><span class="${pipCls}">${p.score}</span></td></tr>`;
   }).join('');
-  return `<table class="scoreboard"><thead><tr><th>Giocatore</th><th>Punti</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+  return `<table class="scoreboard"><thead><tr><th>Giocatore</th><th>Punti</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 function renderLobby(){
   const isHost = og.hostId===myId;
-  const playersHTML = og.players.map((p,i)=>{
-    const connected = rIsConnected(og, p.id);
-    const dot = `<span class="presence-dot ${connected?'online':'offline'}" title="${connected?'Connesso':'Non connesso di recente'}"></span>`;
-    const canKick = isHost && p.id!==myId && p.id!==og.hostId && !p.kicked;
-    const kickBtn = canKick ? `<button class="kick-btn" data-kick-id="${p.id}" title="Espelli ${p.name}" style="margin-left:auto;">✕</button>` : '';
-    return `<div class="name-row" style="display:flex;align-items:center;gap:8px;"><div class="seat-badge">${i+1}</div><div style="flex:1;">${dot}${p.name}${p.id===og.hostId?' 👑':''}${p.id===myId?' <em>(tu)</em>':''}</div>${kickBtn}</div>`;
-  }).join('');
+  const playersHTML = og.players.map((p,i)=>`<div class="name-row"><div class="seat-badge">${i+1}</div><div>${p.name}${p.id===og.hostId?' 👑':''}${p.id===myId?' <em>(tu)</em>':''}</div></div>`).join('');
   app.innerHTML = '';
   app.appendChild(el(`<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
     ${header()}
@@ -1764,7 +1823,7 @@ function renderOnlineGameEnd(){
   if(isHost){
     document.getElementById('rematchBtn').onclick = ()=>{
       actOnline(state=>{
-        state.players.forEach(p=>{ if(!p.kicked){ p.score=0; p.eliminated=false; } });
+        state.players.forEach(p=>{ if(!p.kicked && !p.left){ p.score=0; p.eliminated=false; } });
         state.dealerSeat = state.players[0].seat;
         state.roundCycleIndex = 0;
         state.roundNumber = 1;
@@ -1784,7 +1843,7 @@ function renderOnlineGameEnd(){
 // ============================================================
 // ============== BOOT ===========================================
 // ============================================================
-app.addEventListener('click', async (e)=>{
+document.body.addEventListener('click', async (e)=>{
   const btn = e.target.closest('.kick-btn');
   if(!btn) return;
   if(!og || og.hostId!==myId) return; // solo l'host può espellere
@@ -1795,6 +1854,56 @@ app.addEventListener('click', async (e)=>{
   if(!ok) return;
   await actOnline(state=>{ rKickPlayer(state, targetId); });
 });
+
+document.getElementById('playersToggleBtn').onclick = ()=>{
+  playersPanelOpen = !playersPanelOpen;
+  const panel = document.getElementById('playersPanel');
+  if(panel) panel.style.display = playersPanelOpen ? 'block' : 'none';
+};
+
+document.getElementById('homeIconBtn').onclick = ()=>{ showHome(); };
+
+document.getElementById('quitIconBtn').onclick = async ()=>{
+  const inRoom = !!(og && myRoomCode);
+  const msg = inRoom
+    ? 'Vuoi uscire completamente dal gioco? Se sei in partita, il gioco continuerà per gli altri giocatori senza di te.'
+    : 'Vuoi uscire dal gioco?';
+  if(!confirm(msg)) return;
+  stopPolling();
+  stopHeartbeat();
+  hidePlayersPanel();
+  if(inRoom){
+    try{
+      await actOnline(state=>{
+        if(state.phase==='lobby'){
+          state.players = state.players.filter(p=>p.id!==myId);
+          if(state.players.length && !state.players.find(p=>p.id===state.hostId)){
+            state.hostId = state.players[0].id;
+          }
+        } else {
+          rSelfLeave(state, myId);
+        }
+      });
+    }catch(e){}
+  }
+  await clearIdentity();
+  og=null; myId=null; myRoomCode=null;
+  showQuitScreen();
+};
+
+function showQuitScreen(){
+  app.innerHTML = '';
+  app.appendChild(el(`<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
+    ${header()}
+    <div class="panel center-text">
+      <div class="section-title">Grazie per aver giocato!</div>
+      <p style="opacity:.8;margin-top:8px;">Puoi chiudere questa scheda del browser.</p>
+      <div class="btn-row"><button class="btn secondary" id="backToHomeFromQuit">Torna alla schermata iniziale</button></div>
+    </div>
+  </div>`));
+  document.getElementById('backToHomeFromQuit').onclick = showHome;
+  try{ window.close(); }catch(e){}
+}
 
 async function boot(){
   const rejoined = await tryAutoRejoin();
