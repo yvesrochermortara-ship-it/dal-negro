@@ -163,6 +163,13 @@
   .card .label{ font-size:9px; font-weight:700; letter-spacing:.03em; text-transform:uppercase; opacity:.75;}
 
   .hand-row{ display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin:14px 0;}
+  .card-hover-label{
+    min-height:22px; text-align:center; font-family:'Cinzel',serif; font-weight:700;
+    color:var(--gold-light); font-size:15px; letter-spacing:.04em; margin:2px 0 10px;
+  }
+  .rank-arrow{ font-size:14px; font-weight:800; }
+  .rank-arrow.up{ color:#4fd671; text-shadow:0 0 8px rgba(79,214,113,.6); }
+  .rank-arrow.down{ color:#e25c5c; text-shadow:0 0 8px rgba(226,92,92,.6); }
 
   /* Table */
   .table-wrap{
@@ -654,6 +661,39 @@ function cardBackHTML(small){
   return `<div class="card back ${small?'small':''}"></div>`;
 }
 
+// ---- Card hover label: shows "7 di Coppe" / "Jolly" when hovering any card ----
+function labelForCardId(id){
+  if(id==='jolly') return 'Jolly';
+  const idx = id.lastIndexOf('-');
+  const suit = id.slice(0, idx);
+  const value = parseInt(id.slice(idx+1));
+  return `${valueLabel(value)} di ${SUIT_LABEL[suit]}`;
+}
+function cardHoverLabelHTML(id){
+  return `<div class="card-hover-label" id="${id}">&nbsp;</div>`;
+}
+function wireCardHover(labelId, tableBestRank){
+  const label = document.getElementById(labelId);
+  if(!label) return;
+  document.querySelectorAll('.card[data-card]').forEach(cardEl=>{
+    cardEl.addEventListener('mouseenter', ()=>{
+      const id = cardEl.dataset.card;
+      let html = labelForCardId(id);
+      if((tableBestRank!==null && tableBestRank!==undefined) && id!=='jolly'){
+        const idx = id.lastIndexOf('-');
+        const suit = id.slice(0, idx);
+        const value = parseInt(id.slice(idx+1));
+        const r = rankOf({suit, value});
+        html += r > tableBestRank
+          ? ' <span class="rank-arrow up">▲</span>'
+          : ' <span class="rank-arrow down">▼</span>';
+      }
+      label.innerHTML = html;
+    });
+    cardEl.addEventListener('mouseleave', ()=>{ label.innerHTML = '&nbsp;'; });
+  });
+}
+
 function render(){
   app.innerHTML = '';
   if(!game){ renderSetup(); return; }
@@ -837,10 +877,12 @@ function renderBidding(){
     }).join('');
     handSection = `<p class="center-text" style="opacity:.8;font-size:13px;">Le carte degli altri (la tua è nascosta):</p>
       <div class="hand-row">${others}</div>
-      <div class="hand-row">${cardBackHTML(true)}</div>`;
+      <div class="hand-row">${cardBackHTML(true)}</div>
+      ${cardHoverLabelHTML('cardHoverLabel')}`;
   } else {
     handSection = `<p class="center-text" style="opacity:.8;font-size:13px;">Le tue carte:</p>
-      <div class="hand-row">${hand.map(c=>cardHTML(c,{small:true})).join('')}</div>`;
+      <div class="hand-row">${hand.map(c=>cardHTML(c,{small:true})).join('')}</div>
+      ${cardHoverLabelHTML('cardHoverLabel')}`;
   }
 
   let bidButtons;
@@ -870,6 +912,7 @@ function renderBidding(){
       ${scoreboardHTML(id)}
     </div>
   </div>`));
+  wireCardHover('cardHoverLabel');
 
   document.querySelectorAll('.bid-btn').forEach(btn=>{
     btn.onclick = ()=>{
@@ -895,6 +938,13 @@ function renderPlaying(skipHandlers){
     <div class="table-card-slot">${cardHTML(t.card,{})}<div class="table-card-name">${playerById(t.playerId).name}${t.jokerCall?` (${t.jokerCall})`:''}</div></div>
   `).join('')}</div>` : `<div class="empty-table-msg">Nessuna carta ancora giocata in questa presa.</div>`;
 
+  let tableBestRank = null;
+  if(game.table.length){
+    let winner = game.table[0];
+    for(const entry of game.table) if(effectiveRank(entry) > effectiveRank(winner)) winner = entry;
+    tableBestRank = effectiveRank(winner);
+  }
+
   app.appendChild(el(`<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
     ${header()}
     ${infoBarHTML()}
@@ -903,9 +953,11 @@ function renderPlaying(skipHandlers){
       <div class="section-title">${p.name}, tocca a te</div>
       <p style="opacity:.75;font-size:13px;">Dichiarazione: <strong style="color:var(--gold-light)">${game.bids[id]}</strong> · Prese finora: <strong style="color:var(--gold-light)">${game.tricksWon[id]}</strong></p>
       <div class="hand-row">${hand.map(c=>cardHTML(c,{clickable:!skipHandlers})).join('')}</div>
+      ${cardHoverLabelHTML('cardHoverLabel')}
       ${scoreboardHTML(id)}
     </div>
   </div>`));
+  wireCardHover('cardHoverLabel', tableBestRank);
 
   if(skipHandlers) return;
   document.querySelectorAll('.hand-row .card.clickable').forEach(cardEl=>{
@@ -1700,10 +1752,12 @@ function renderOnlineBidding(){
     }).join('');
     handSection = `<p class="center-text" style="opacity:.8;font-size:13px;">Le carte degli altri (la tua è nascosta):</p>
       <div class="hand-row">${others}</div>
-      <div class="hand-row">${cardBackHTML(true)}</div>`;
+      <div class="hand-row">${cardBackHTML(true)}</div>
+      ${cardHoverLabelHTML('cardHoverLabel')}`;
   } else {
     handSection = `<p class="center-text" style="opacity:.8;font-size:13px;">Le tue carte:</p>
-      <div class="hand-row">${myHand.map(c=>cardHTML(c,{small:true})).join('')}</div>`;
+      <div class="hand-row">${myHand.map(c=>cardHTML(c,{small:true})).join('')}</div>
+      ${cardHoverLabelHTML('cardHoverLabel')}`;
   }
 
   let actionSection;
@@ -1739,6 +1793,7 @@ function renderOnlineBidding(){
       ${onlineScoreboard(id)}
     </div>
   </div>`));
+  wireCardHover('cardHoverLabel');
 
   if(isMe){
     document.querySelectorAll('.bid-btn').forEach(btn=>{
@@ -1760,6 +1815,13 @@ function renderOnlinePlaying(skipHandlers){
     <div class="table-card-slot">${cardHTML(t.card,{})}<div class="table-card-name">${rPlayerById(og,t.playerId).name}${t.jokerCall?` (${t.jokerCall})`:''}</div></div>
   `).join('')}</div>` : `<div class="empty-table-msg">Nessuna carta ancora giocata in questa presa.</div>`;
 
+  let tableBestRank = null;
+  if(og.table.length){
+    let winner = og.table[0];
+    for(const entry of og.table) if(rEffectiveRank(entry) > rEffectiveRank(winner)) winner = entry;
+    tableBestRank = rEffectiveRank(winner);
+  }
+
   app.innerHTML = '';
   app.appendChild(el(`<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
     ${header()}
@@ -1769,9 +1831,11 @@ function renderOnlinePlaying(skipHandlers){
       <p style="opacity:.75;font-size:13px;">La tua dichiarazione: <strong style="color:var(--gold-light)">${og.bids[myId]}</strong> · Le tue prese finora: <strong style="color:var(--gold-light)">${og.tricksWon[myId]||0}</strong></p>
       <p class="center-text" style="opacity:.85;">${isMe ? '🎯 Tocca a te giocare!' : `⏳ In attesa che <strong style="color:var(--gold-light)">${rPlayerById(og,id).name}</strong> giochi...`}</p>
       <div class="hand-row">${myHand.map(c=>cardHTML(c,{clickable:isMe && !skipHandlers})).join('')}</div>
+      ${cardHoverLabelHTML('cardHoverLabel')}
       ${onlineScoreboard(id)}
     </div>
   </div>`));
+  wireCardHover('cardHoverLabel', tableBestRank);
 
   if(isMe && !skipHandlers){
     document.querySelectorAll('.hand-row .card.clickable').forEach(cardEl=>{
