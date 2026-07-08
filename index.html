@@ -195,6 +195,13 @@
   table.scoreboard th{ color:var(--gold-light); font-family:'Cinzel',serif; font-weight:600; font-size:13px; letter-spacing:.03em;}
   table.scoreboard tr.eliminated td{ opacity:.4; text-decoration:line-through;}
   table.scoreboard tr.current-turn td:first-child{ color:var(--gold-light); font-weight:800;}
+  table.scoreboard td:first-child{ text-align:left; }
+  .presence-dot{ display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; vertical-align:middle; }
+  .presence-dot.online{ background:#5fbf6f; box-shadow:0 0 4px #5fbf6f; }
+  .presence-dot.offline{ background:#8a8a8a; }
+  .kick-btn{ background:rgba(180,60,60,.25); border:1px solid rgba(220,120,120,.5); color:#f2b8b8; width:22px; height:22px; border-radius:50%; font-size:12px; line-height:1; cursor:pointer; }
+  .kick-btn:hover{ background:rgba(180,60,60,.5); }
+  .name-row .presence-dot{ margin-right:4px; }
   .score-pip{
     display:inline-block; min-width:26px; padding:2px 6px; border-radius:12px; font-weight:800;
     background:rgba(255,255,255,.08);
@@ -998,6 +1005,7 @@ function renderGameEnd(){
 // ============================================================
 function showHome(){
   stopPolling();
+  stopHeartbeat();
   app.innerHTML = '';
   app.appendChild(el(`<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
     ${header()}
@@ -1190,6 +1198,36 @@ function rProceedAfterSummary(state){
   rStartRound(state);
 }
 
+// --- Presenza online (connesso/disconnesso) ---
+const PRESENCE_STALE_MS = 20000; // oltre 20s senza segnale, consideriamo il giocatore "non connesso"
+function rIsConnected(state, playerId){
+  const t = state.presence && state.presence[playerId];
+  return !!t && (Date.now()-t < PRESENCE_STALE_MS);
+}
+
+// --- Espulsione di un giocatore da parte dell'host ---
+function rKickPlayer(state, targetId){
+  const target = state.players.find(p=>p.id===targetId);
+  if(!target || target.eliminated) return;
+  if(targetId === state.hostId) return; // l'host non può espellere se stesso
+  target.eliminated = true;
+  target.kicked = true;
+
+  if(state.phase==='lobby' || state.phase==='gameEnd'){
+    return; // niente round in corso da sistemare
+  }
+  if(state.phase==='roundSummary'){
+    const remaining = rActivePlayers(state);
+    if(remaining.length<=1) state.phase='gameEnd';
+    return;
+  }
+  // Partita a metà round (offerte/gioco carte/jolly/risultato presa):
+  // il round in corso ricomincia da capo per i giocatori rimasti, i punti già segnati restano.
+  const remaining = rActivePlayers(state);
+  if(remaining.length<=1){ state.phase='gameEnd'; return; }
+  rStartRound(state);
+}
+
 // ============================================================
 // ============== ONLINE: ROOM / STORAGE HELPERS =================
 // ============================================================
@@ -1213,7 +1251,8 @@ function newRoomState(code, hostName, hostId){
   return {
     roomCode: code,
     hostId: hostId,
-    players: [{id:hostId, name:hostName, seat:0, score:0, eliminated:false}],
+    players: [{id:hostId, name:hostName, seat:0, score:0, eliminated:false, kicked:false}],
+    presence: {},
     dealerSeat: 0,
     roundCycle: [5,4,3,2,1],
     roundCycleIndex: 0,
@@ -1253,6 +1292,27 @@ function stopPolling(){ if(pollTimer){ clearInterval(pollTimer); pollTimer=null;
 function startPolling(){
   stopPolling();
   pollTimer = setInterval(pollRoom, 1500);
+}
+
+// --- Heartbeat: segnala periodicamente "sono ancora qui", usato per lo stato connesso/disconnesso ---
+const HEARTBEAT_INTERVAL_MS = 8000;
+let heartbeatTimer = null;
+function stopHeartbeat(){ if(heartbeatTimer){ clearInterval(heartbeatTimer); heartbeatTimer=null; } }
+function startHeartbeat(){
+  stopHeartbeat();
+  sendHeartbeat();
+  heartbeatTimer = setInterval(sendHeartbeat, HEARTBEAT_INTERVAL_MS);
+}
+async function sendHeartbeat(){
+  if(!myRoomCode || !myId) return;
+  try{
+    const fresh = await loadRoom(myRoomCode);
+    if(!fresh) return;
+    fresh.presence = fresh.presence || {};
+    fresh.presence[myId] = Date.now();
+    await saveRoom(fresh);
+    og = fresh; // aggiorna la vista locale senza forzare un re-render (ci pensa il prossimo poll)
+  }catch(e){}
 }
 async function pollRoom(){
   if(!myRoomCode) return;
@@ -1302,6 +1362,7 @@ async function tryAutoRejoin(){
   myId = identity.playerId; myRoomCode = identity.roomCode; myName = identity.playerName;
   og = room;
   startPolling();
+  startHeartbeat();
   return true;
 }
 
@@ -1310,22 +1371,39 @@ async function createOrJoinRoom(codeRaw, nameRaw){
   const name = (nameRaw||'').trim() || 'Giocatore';
   if(!code) code = genRoomCode();
   let room = await loadRoom(code);
-  const newId = genId();
-  let finalName = name;
+  let finalId, finalName = name;
+  const now = Date.now();
   if(!room){
-    room = newRoomState(code, finalName, newId);
+    finalId = genId();
+    room = newRoomState(code, finalName, finalId);
+    room.presence[finalId] = now;
     await saveRoom(room);
   } else {
-    if(room.phase !== 'lobby') throw new Error('La partita in questa stanza è già iniziata. Prova un altro codice o aspetta la prossima partita.');
-    if(room.players.length >= 8) throw new Error('Questa stanza è già piena (max 8 giocatori).');
-    let n = 2;
-    while(room.players.some(p=>p.name===finalName)){ finalName = name+' ('+n+')'; n++; }
-    room.players.push({id:newId, name:finalName, seat:room.players.length, score:0, eliminated:false});
-    await saveRoom(room);
+    room.presence = room.presence || {};
+    const existing = room.players.find(p => p.name.trim().toLowerCase() === name.trim().toLowerCase());
+    const existingConnected = existing && rIsConnected(room, existing.id);
+    if(existing && !existingConnected){
+      // Rientro: questo dispositivo riprende il posto del giocatore esistente (stesso nome, non più connesso)
+      finalId = existing.id;
+      finalName = existing.name;
+      room.presence[finalId] = now;
+      await saveRoom(room);
+    } else {
+      if(room.phase !== 'lobby') throw new Error('La partita in questa stanza è già iniziata. Se sei già un giocatore di questa stanza, inserisci esattamente lo stesso nome che avevi usato per rientrare.');
+      if(room.players.length >= 8) throw new Error('Questa stanza è già piena (max 8 giocatori).');
+      let finalNameTry = name, n = 2;
+      while(room.players.some(p=>p.name===finalNameTry)){ finalNameTry = name+' ('+n+')'; n++; }
+      finalName = finalNameTry;
+      finalId = genId();
+      room.players.push({id:finalId, name:finalName, seat:room.players.length, score:0, eliminated:false, kicked:false});
+      room.presence[finalId] = now;
+      await saveRoom(room);
+    }
   }
-  myId = newId; myRoomCode = code; myName = finalName; og = room;
-  await saveIdentity({roomCode:code, playerId:newId, playerName:finalName});
+  myId = finalId; myRoomCode = code; myName = finalName; og = room;
+  await saveIdentity({roomCode:code, playerId:finalId, playerName:finalName});
   startPolling();
+  startHeartbeat();
 }
 
 // ============================================================
@@ -1333,6 +1411,7 @@ async function createOrJoinRoom(codeRaw, nameRaw){
 // ============================================================
 function renderOnlineJoinScreen(errorMsg){
   stopPolling();
+  stopHeartbeat();
   app.innerHTML = '';
   app.appendChild(el(`<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
     ${header()}
@@ -1347,7 +1426,7 @@ function renderOnlineJoinScreen(errorMsg){
       <div class="btn-row">
         <button class="btn" id="joinBtn">Entra / Crea stanza</button>
       </div>
-      <p style="font-size:12px;opacity:.65;margin-top:10px;">Lascia il codice vuoto per creare una stanza nuova da condividere con gli altri. Chi si unisce dopo deve inserire lo stesso codice.</p>
+      <p style="font-size:12px;opacity:.65;margin-top:10px;">Lascia il codice vuoto per creare una stanza nuova da condividere con gli altri. Chi si unisce dopo deve inserire lo stesso codice. Se sei già stato in questa stanza (es. hai chiuso l'app per sbaglio), rientra usando lo stesso codice e <strong>esattamente lo stesso nome</strong>: riprenderai il tuo posto, punteggio e mano comprese.</p>
       <div class="center-text"><button class="rules-link" id="backHomeBtn">← Torna alla scelta modalità</button></div>
     </div>
   </div>`));
@@ -1368,6 +1447,8 @@ function renderOnlineJoinScreen(errorMsg){
 
 function renderOnline(){
   if(!og){ renderOnlineJoinScreen(); return; }
+  const me = rPlayerById(og, myId);
+  if(me && me.kicked){ renderKickedScreen(); return; }
   switch(og.phase){
     case 'lobby': renderLobby(); break;
     case 'bidding': renderOnlineBidding(); break;
@@ -1381,6 +1462,25 @@ function renderOnline(){
   }
 }
 
+function renderKickedScreen(){
+  stopPolling();
+  stopHeartbeat();
+  app.innerHTML = '';
+  app.appendChild(el(`<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
+    ${header()}
+    <div class="panel center-text">
+      <div class="section-title" style="color:var(--danger);">Sei stato espulso dalla stanza</div>
+      <p style="opacity:.8;margin-top:8px;">L'host ti ha rimosso dalla partita.</p>
+      <div class="btn-row"><button class="btn" id="kickedLeaveBtn">Torna alla home</button></div>
+    </div>
+  </div>`));
+  document.getElementById('kickedLeaveBtn').onclick = async ()=>{
+    await clearIdentity();
+    og=null; myId=null; myRoomCode=null;
+    showHome();
+  };
+}
+
 function onlineInfoBar(){
   return `<div class="info-bar">
     <div class="chip">Round <span class="v">${og.roundNumber}</span></div>
@@ -1390,17 +1490,31 @@ function onlineInfoBar(){
   </div>`;
 }
 function onlineScoreboard(highlightId){
+  const isHost = og.hostId===myId;
   const rows = og.players.slice().sort((a,b)=>a.seat-b.seat).map(p=>{
     const cls=[]; if(p.eliminated) cls.push('eliminated'); if(p.id===highlightId) cls.push('current-turn');
     const pipCls = p.score>=5 ? 'score-pip danger' : 'score-pip';
-    return `<tr class="${cls.join(' ')}"><td>${p.name}${p.id===myId?' (tu)':''}</td><td><span class="${pipCls}">${p.score}</span></td></tr>`;
+    const connected = rIsConnected(og, p.id);
+    const dot = `<span class="presence-dot ${connected?'online':'offline'}" title="${connected?'Connesso':'Non connesso di recente'}"></span>`;
+    const statusLabel = p.kicked
+      ? ' <em style="opacity:.6;font-size:11px;">(espulso)</em>'
+      : (p.eliminated ? ' <em style="opacity:.6;font-size:11px;">(eliminato)</em>' : '');
+    const canKick = isHost && p.id!==myId && p.id!==og.hostId && !p.kicked;
+    const kickBtn = canKick ? `<button class="kick-btn" data-kick-id="${p.id}" title="Espelli ${p.name}">✕</button>` : '';
+    return `<tr class="${cls.join(' ')}"><td>${dot}${p.name}${p.id===myId?' (tu)':''}${statusLabel}</td><td><span class="${pipCls}">${p.score}</span></td><td>${kickBtn}</td></tr>`;
   }).join('');
-  return `<table class="scoreboard"><thead><tr><th>Giocatore</th><th>Punti</th></tr></thead><tbody>${rows}</tbody></table>`;
+  return `<table class="scoreboard"><thead><tr><th>Giocatore</th><th>Punti</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 function renderLobby(){
   const isHost = og.hostId===myId;
-  const playersHTML = og.players.map((p,i)=>`<div class="name-row"><div class="seat-badge">${i+1}</div><div>${p.name}${p.id===og.hostId?' 👑':''}${p.id===myId?' <em>(tu)</em>':''}</div></div>`).join('');
+  const playersHTML = og.players.map((p,i)=>{
+    const connected = rIsConnected(og, p.id);
+    const dot = `<span class="presence-dot ${connected?'online':'offline'}" title="${connected?'Connesso':'Non connesso di recente'}"></span>`;
+    const canKick = isHost && p.id!==myId && p.id!==og.hostId && !p.kicked;
+    const kickBtn = canKick ? `<button class="kick-btn" data-kick-id="${p.id}" title="Espelli ${p.name}" style="margin-left:auto;">✕</button>` : '';
+    return `<div class="name-row" style="display:flex;align-items:center;gap:8px;"><div class="seat-badge">${i+1}</div><div style="flex:1;">${dot}${p.name}${p.id===og.hostId?' 👑':''}${p.id===myId?' <em>(tu)</em>':''}</div>${kickBtn}</div>`;
+  }).join('');
   app.innerHTML = '';
   app.appendChild(el(`<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
     ${header()}
@@ -1432,6 +1546,7 @@ function renderLobby(){
     });
     await clearIdentity();
     stopPolling();
+    stopHeartbeat();
     og=null; myId=null; myRoomCode=null;
     showHome();
   };
@@ -1649,7 +1764,7 @@ function renderOnlineGameEnd(){
   if(isHost){
     document.getElementById('rematchBtn').onclick = ()=>{
       actOnline(state=>{
-        state.players.forEach(p=>{ p.score=0; p.eliminated=false; });
+        state.players.forEach(p=>{ if(!p.kicked){ p.score=0; p.eliminated=false; } });
         state.dealerSeat = state.players[0].seat;
         state.roundCycleIndex = 0;
         state.roundNumber = 1;
@@ -1659,6 +1774,7 @@ function renderOnlineGameEnd(){
   }
   document.getElementById('leaveGameBtn').onclick = async ()=>{
     stopPolling();
+    stopHeartbeat();
     await clearIdentity();
     og=null; myId=null; myRoomCode=null;
     showHome();
@@ -1668,6 +1784,18 @@ function renderOnlineGameEnd(){
 // ============================================================
 // ============== BOOT ===========================================
 // ============================================================
+app.addEventListener('click', async (e)=>{
+  const btn = e.target.closest('.kick-btn');
+  if(!btn) return;
+  if(!og || og.hostId!==myId) return; // solo l'host può espellere
+  const targetId = btn.getAttribute('data-kick-id');
+  const target = og.players.find(p=>p.id===targetId);
+  if(!target) return;
+  const ok = confirm(`Espellere ${target.name} dalla stanza? Se la partita è a metà round, il round in corso ricomincerà per chi resta.`);
+  if(!ok) return;
+  await actOnline(state=>{ rKickPlayer(state, targetId); });
+});
+
 async function boot(){
   const rejoined = await tryAutoRejoin();
   if(rejoined){ renderOnline(); return; }
