@@ -196,25 +196,31 @@
   table.scoreboard tr.eliminated td{ opacity:.4; text-decoration:line-through;}
   table.scoreboard tr.current-turn td:first-child{ color:var(--gold-light); font-weight:800;}
   table.scoreboard td:first-child{ text-align:left; }
-  .presence-dot{ display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; vertical-align:middle; }
+  .presence-dot{ display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; vertical-align:middle; flex-shrink:0; }
   .presence-dot.online{ background:#5fbf6f; box-shadow:0 0 4px #5fbf6f; }
   .presence-dot.offline{ background:#8a8a8a; }
-  .kick-btn{ background:rgba(180,60,60,.25); border:1px solid rgba(220,120,120,.5); color:#f2b8b8; width:22px; height:22px; min-width:22px; border-radius:50%; font-size:12px; line-height:1; cursor:pointer; flex-shrink:0; }
-  .kick-btn:hover{ background:rgba(180,60,60,.5); }
+  .crown-btn, .kick-btn, .ban-btn{ width:24px; height:24px; min-width:24px; border-radius:6px; font-size:12px; line-height:1; cursor:pointer; flex-shrink:0; border:1px solid rgba(255,255,255,.25); background:rgba(255,255,255,.06); color:var(--gold-light); }
+  .crown-btn:hover{ background:rgba(201,162,39,.28); }
+  .kick-btn{ border-color:rgba(220,160,90,.5); color:#f0c98a; background:rgba(150,100,20,.18); }
+  .kick-btn:hover{ background:rgba(180,120,30,.38); }
+  .ban-btn{ border-color:rgba(220,90,90,.55); color:#f2a3a3; background:rgba(150,40,40,.2); }
+  .ban-btn:hover{ background:rgba(180,50,50,.42); }
 
   #globalToolbar{ position:fixed; top:calc(10px + env(safe-area-inset-top)); right:calc(10px + env(safe-area-inset-right)); display:flex; gap:8px; z-index:1000; }
   .icon-btn{ width:36px; height:36px; border-radius:50%; border:1px solid var(--gold); background:rgba(13,50,38,.9); color:var(--gold-light); font-size:15px; cursor:pointer; display:flex; align-items:center; justify-content:center; -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); padding:0; }
   .icon-btn:hover{ background:rgba(26,86,64,.95); }
   .icon-btn:active{ transform:scale(.94); }
 
-  #playersPanel{ position:fixed; top:calc(54px + env(safe-area-inset-top)); right:calc(10px + env(safe-area-inset-right)); width:200px; max-height:56vh; overflow-y:auto; background:rgba(11,42,32,.96); border:1px solid var(--gold); border-radius:12px; padding:10px; z-index:999; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); box-shadow:0 8px 24px rgba(0,0,0,.4); }
+  #playersPanel{ position:fixed; top:calc(54px + env(safe-area-inset-top)); right:calc(10px + env(safe-area-inset-right)); width:220px; max-height:60vh; overflow-y:auto; background:rgba(11,42,32,.96); border:1px solid var(--gold); border-radius:12px; padding:10px; z-index:999; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); box-shadow:0 8px 24px rgba(0,0,0,.4); }
   #playersPanel .pp-title{ font-family:'Cinzel',serif; color:var(--gold-light); font-size:12.5px; font-weight:700; margin-bottom:8px; text-align:center; letter-spacing:.04em; text-transform:uppercase; }
-  #playersPanel .pp-row{ display:flex; align-items:center; gap:6px; padding:6px 2px; border-bottom:1px solid rgba(255,255,255,.08); font-size:12.5px; }
+  #playersPanel .pp-row{ display:flex; flex-direction:column; gap:5px; padding:7px 2px; border-bottom:1px solid rgba(255,255,255,.08); font-size:12.5px; }
   #playersPanel .pp-row:last-child{ border-bottom:none; }
+  #playersPanel .pp-row-top{ display:flex; align-items:center; gap:4px; }
   #playersPanel .pp-name{ flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   #playersPanel .pp-tag{ opacity:.55; font-size:11px; flex-shrink:0; }
+  #playersPanel .pp-actions{ display:flex; gap:6px; justify-content:flex-end; }
   @media (max-width:420px){
-    #playersPanel{ width:168px; }
+    #playersPanel{ width:188px; }
   }
   .score-pip{
     display:inline-block; min-width:26px; padding:2px 6px; border-radius:12px; font-weight:800;
@@ -1226,7 +1232,7 @@ function rIsConnected(state, playerId){
   return !!t && (Date.now()-t < PRESENCE_STALE_MS);
 }
 
-// --- Rimozione di un giocatore dalla partita in corso (espulsione o uscita volontaria) ---
+// --- Rimozione di un giocatore dalla partita in corso (espulsione/ban/uscita volontaria) ---
 function rRemovePlayerAndContinue(state, playerId, reasonFlag){
   const target = state.players.find(p=>p.id===playerId);
   if(!target || target.eliminated) return;
@@ -1253,15 +1259,28 @@ function rRemovePlayerAndContinue(state, playerId, reasonFlag){
   rStartRound(state);
 }
 
-// --- Espulsione di un giocatore da parte dell'host ---
+// --- Espulsione TEMPORANEA da parte dell'host: può rientrare in qualunque momento con lo stesso nome ---
 function rKickPlayer(state, targetId){
-  if(targetId === state.hostId) return; // l'host non può essere espulso da altri (può solo auto-uscire)
-  rRemovePlayerAndContinue(state, targetId, 'kicked');
+  if(targetId === state.hostId) return; // l'host non può essere rimosso da altri (può solo auto-uscire)
+  rRemovePlayerAndContinue(state, targetId, 'removedByHost');
 }
 
-// --- Uscita volontaria (chi esce può essere anche l'host) ---
+// --- Ban PERMANENTE da parte dell'host: non potrà mai più rientrare con questo nome ---
+function rBanPlayer(state, targetId){
+  if(targetId === state.hostId) return; // l'host non può bannare se stesso
+  rRemovePlayerAndContinue(state, targetId, 'banned');
+}
+
+// --- Uscita volontaria (chi esce può essere anche l'host); può rientrare in seguito ---
 function rSelfLeave(state, playerId){
   rRemovePlayerAndContinue(state, playerId, 'left');
+}
+
+// --- Passaggio del ruolo di host a un altro giocatore attivo ---
+function rTransferHost(state, newHostId){
+  const cand = state.players.find(p=>p.id===newHostId);
+  if(!cand || cand.eliminated) return;
+  state.hostId = newHostId;
 }
 
 // ============================================================
@@ -1287,7 +1306,7 @@ function newRoomState(code, hostName, hostId){
   return {
     roomCode: code,
     hostId: hostId,
-    players: [{id:hostId, name:hostName, seat:0, score:0, eliminated:false, kicked:false}],
+    players: [{id:hostId, name:hostName, seat:0, score:0, eliminated:false, banned:false, removedByHost:false, left:false}],
     presence: {},
     dealerSeat: 0,
     roundCycle: [5,4,3,2,1],
@@ -1417,11 +1436,20 @@ async function createOrJoinRoom(codeRaw, nameRaw){
   } else {
     room.presence = room.presence || {};
     const existing = room.players.find(p => p.name.trim().toLowerCase() === name.trim().toLowerCase());
+    if(existing && existing.banned){
+      throw new Error(`L'host ha bannato "${existing.name}" da questa stanza: non è più possibile rientrare con questo nome.`);
+    }
     const existingConnected = existing && rIsConnected(room, existing.id);
     if(existing && !existingConnected){
       // Rientro: questo dispositivo riprende il posto del giocatore esistente (stesso nome, non più connesso)
       finalId = existing.id;
       finalName = existing.name;
+      if(existing.removedByHost || existing.left){
+        // Era stato espulso temporaneamente o era uscito volontariamente: bentornato, riprende a giocare
+        existing.eliminated = false;
+        existing.removedByHost = false;
+        existing.left = false;
+      }
       room.presence[finalId] = now;
       await saveRoom(room);
     } else {
@@ -1431,7 +1459,7 @@ async function createOrJoinRoom(codeRaw, nameRaw){
       while(room.players.some(p=>p.name===finalNameTry)){ finalNameTry = name+' ('+n+')'; n++; }
       finalName = finalNameTry;
       finalId = genId();
-      room.players.push({id:finalId, name:finalName, seat:room.players.length, score:0, eliminated:false, kicked:false});
+      room.players.push({id:finalId, name:finalName, seat:room.players.length, score:0, eliminated:false, banned:false, removedByHost:false, left:false});
       room.presence[finalId] = now;
       await saveRoom(room);
     }
@@ -1485,7 +1513,8 @@ function renderOnline(){
   if(!og){ hidePlayersPanel(); renderOnlineJoinScreen(); return; }
   renderPlayersPanel();
   const me = rPlayerById(og, myId);
-  if(me && me.kicked){ renderKickedScreen(); return; }
+  if(me && me.banned){ renderBannedScreen(); return; }
+  if(me && me.removedByHost){ renderRemovedScreen(); return; }
   switch(og.phase){
     case 'lobby': renderLobby(); break;
     case 'bidding': renderOnlineBidding(); break;
@@ -1519,18 +1548,26 @@ function renderPlayersPanel(){
   const rows = og.players.slice().sort((a,b)=>a.seat-b.seat).map(p=>{
     const connected = rIsConnected(og, p.id);
     const dot = `<span class="presence-dot ${connected?'online':'offline'}" title="${connected?'Connesso':'Non connesso di recente'}"></span>`;
-    const tag = p.kicked ? '<span class="pp-tag">espulso</span>'
+    const tag = p.banned ? '<span class="pp-tag">bannato</span>'
+      : (p.removedByHost ? '<span class="pp-tag">in pausa</span>'
       : (p.left ? '<span class="pp-tag">uscito</span>'
-      : (p.eliminated ? '<span class="pp-tag">eliminato</span>' : ''));
-    const canKick = isHost && p.id!==myId && !p.kicked && !p.left && !p.eliminated;
-    const kickBtn = canKick ? `<button class="kick-btn" data-kick-id="${p.id}" title="Espelli ${p.name}">✕</button>` : '';
-    return `<div class="pp-row">${dot}<span class="pp-name">${p.name}${p.id===myId?' (tu)':''}${p.id===og.hostId?' 👑':''}</span>${tag}${kickBtn}</div>`;
+      : (p.eliminated ? '<span class="pp-tag">eliminato</span>' : '')));
+    const canAct = isHost && p.id!==myId && p.id!==og.hostId && !p.eliminated;
+    const actions = canAct ? `<div class="pp-actions">
+        <button class="crown-btn" data-crown-id="${p.id}" title="Rendi ${p.name} host">👑</button>
+        <button class="kick-btn" data-kick-id="${p.id}" title="Espelli ${p.name} (potrà rientrare)">⏏</button>
+        <button class="ban-btn" data-ban-id="${p.id}" title="Banna ${p.name} (non potrà più rientrare)">⛔</button>
+      </div>` : '';
+    return `<div class="pp-row">
+      <div class="pp-row-top">${dot}<span class="pp-name">${p.name}${p.id===myId?' (tu)':''}${p.id===og.hostId?' 👑':''}</span>${tag}</div>
+      ${actions}
+    </div>`;
   }).join('');
   panel.innerHTML = `<div class="pp-title">Giocatori (${og.players.length})</div>${rows}`;
   panel.style.display = playersPanelOpen ? 'block' : 'none';
 }
 
-function renderKickedScreen(){
+function renderBannedScreen(){
   stopPolling();
   stopHeartbeat();
   hidePlayersPanel();
@@ -1538,12 +1575,45 @@ function renderKickedScreen(){
   app.appendChild(el(`<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
     ${header()}
     <div class="panel center-text">
-      <div class="section-title" style="color:var(--danger);">Sei stato espulso dalla stanza</div>
-      <p style="opacity:.8;margin-top:8px;">L'host ti ha rimosso dalla partita.</p>
-      <div class="btn-row"><button class="btn" id="kickedLeaveBtn">Torna alla home</button></div>
+      <div class="section-title" style="color:var(--danger);">Sei stato bannato da questa stanza</div>
+      <p style="opacity:.8;margin-top:8px;">L'host ti ha rimosso in modo permanente: non puoi più rientrare in questa stanza con questo nome.</p>
+      <div class="btn-row"><button class="btn" id="bannedLeaveBtn">Torna alla home</button></div>
     </div>
   </div>`));
-  document.getElementById('kickedLeaveBtn').onclick = async ()=>{
+  document.getElementById('bannedLeaveBtn').onclick = async ()=>{
+    await clearIdentity();
+    og=null; myId=null; myRoomCode=null;
+    showHome();
+  };
+}
+
+function renderRemovedScreen(){
+  stopPolling();
+  stopHeartbeat();
+  hidePlayersPanel();
+  const code = myRoomCode, name = myName;
+  app.innerHTML = '';
+  app.appendChild(el(`<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
+    ${header()}
+    <div class="panel center-text">
+      <div class="section-title" style="color:var(--gold-light);">Sei stato messo in pausa dall'host</div>
+      <p style="opacity:.8;margin-top:8px;">Puoi rientrare in partita quando vuoi, riprendendo il tuo posto.</p>
+      <div class="btn-row"><button class="btn" id="rejoinNowBtn">Rientra in partita</button></div>
+      <div class="center-text"><button class="rules-link" id="removedHomeBtn">Torna alla home</button></div>
+    </div>
+  </div>`));
+  document.getElementById('rejoinNowBtn').onclick = async ()=>{
+    const btn = document.getElementById('rejoinNowBtn');
+    btn.disabled = true; btn.textContent = 'Attendere...';
+    try{
+      await createOrJoinRoom(code, name);
+      renderOnline();
+    }catch(e){
+      btn.disabled = false; btn.textContent = 'Rientra in partita';
+      alert(e.message || 'Errore, riprova.');
+    }
+  };
+  document.getElementById('removedHomeBtn').onclick = async ()=>{
     await clearIdentity();
     og=null; myId=null; myRoomCode=null;
     showHome();
@@ -1562,10 +1632,11 @@ function onlineScoreboard(highlightId){
   const rows = og.players.slice().sort((a,b)=>a.seat-b.seat).map(p=>{
     const cls=[]; if(p.eliminated) cls.push('eliminated'); if(p.id===highlightId) cls.push('current-turn');
     const pipCls = p.score>=5 ? 'score-pip danger' : 'score-pip';
-    const statusLabel = p.kicked
-      ? ' <em style="opacity:.6;font-size:11px;">(espulso)</em>'
+    const statusLabel = p.banned
+      ? ' <em style="opacity:.6;font-size:11px;">(bannato)</em>'
+      : (p.removedByHost ? ' <em style="opacity:.6;font-size:11px;">(in pausa)</em>'
       : (p.left ? ' <em style="opacity:.6;font-size:11px;">(uscito)</em>'
-      : (p.eliminated ? ' <em style="opacity:.6;font-size:11px;">(eliminato)</em>' : ''));
+      : (p.eliminated ? ' <em style="opacity:.6;font-size:11px;">(eliminato)</em>' : '')));
     return `<tr class="${cls.join(' ')}"><td>${p.name}${p.id===myId?' (tu)':''}${statusLabel}</td><td><span class="${pipCls}">${p.score}</span></td></tr>`;
   }).join('');
   return `<table class="scoreboard"><thead><tr><th>Giocatore</th><th>Punti</th></tr></thead><tbody>${rows}</tbody></table>`;
@@ -1823,7 +1894,7 @@ function renderOnlineGameEnd(){
   if(isHost){
     document.getElementById('rematchBtn').onclick = ()=>{
       actOnline(state=>{
-        state.players.forEach(p=>{ if(!p.kicked && !p.left){ p.score=0; p.eliminated=false; } });
+        state.players.forEach(p=>{ if(!p.banned && !p.left){ p.score=0; p.eliminated=false; p.removedByHost=false; } });
         state.dealerSeat = state.players[0].seat;
         state.roundCycleIndex = 0;
         state.roundNumber = 1;
@@ -1844,15 +1915,39 @@ function renderOnlineGameEnd(){
 // ============== BOOT ===========================================
 // ============================================================
 document.body.addEventListener('click', async (e)=>{
-  const btn = e.target.closest('.kick-btn');
-  if(!btn) return;
-  if(!og || og.hostId!==myId) return; // solo l'host può espellere
-  const targetId = btn.getAttribute('data-kick-id');
-  const target = og.players.find(p=>p.id===targetId);
-  if(!target) return;
-  const ok = confirm(`Espellere ${target.name} dalla stanza? Se la partita è a metà round, il round in corso ricomincerà per chi resta.`);
-  if(!ok) return;
-  await actOnline(state=>{ rKickPlayer(state, targetId); });
+  const kickBtn = e.target.closest('.kick-btn');
+  const banBtn = e.target.closest('.ban-btn');
+  const crownBtn = e.target.closest('.crown-btn');
+  if(!kickBtn && !banBtn && !crownBtn) return;
+  if(!og || og.hostId!==myId) return; // solo l'host può agire
+
+  if(kickBtn){
+    const targetId = kickBtn.getAttribute('data-kick-id');
+    const target = og.players.find(p=>p.id===targetId);
+    if(!target) return;
+    const ok = confirm(`Espellere temporaneamente ${target.name}? Potrà rientrare quando vuole usando lo stesso nome. Se la partita è a metà round, il round in corso ricomincerà per chi resta.`);
+    if(!ok) return;
+    await actOnline(state=>{ rKickPlayer(state, targetId); });
+    return;
+  }
+  if(banBtn){
+    const targetId = banBtn.getAttribute('data-ban-id');
+    const target = og.players.find(p=>p.id===targetId);
+    if(!target) return;
+    const ok = confirm(`Bannare definitivamente ${target.name}? Non potrà MAI PIÙ rientrare in questa stanza con questo nome. Se la partita è a metà round, il round in corso ricomincerà per chi resta.`);
+    if(!ok) return;
+    await actOnline(state=>{ rBanPlayer(state, targetId); });
+    return;
+  }
+  if(crownBtn){
+    const targetId = crownBtn.getAttribute('data-crown-id');
+    const target = og.players.find(p=>p.id===targetId);
+    if(!target) return;
+    const ok = confirm(`Rendere ${target.name} il nuovo host della stanza? Potrà avviare i round, fare rivincite e gestire i giocatori al posto tuo.`);
+    if(!ok) return;
+    await actOnline(state=>{ rTransferHost(state, targetId); });
+    return;
+  }
 });
 
 document.getElementById('playersToggleBtn').onclick = ()=>{
