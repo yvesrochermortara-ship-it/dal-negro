@@ -46,6 +46,7 @@
   }
   #app{
     min-height:100vh;
+    min-height:100dvh;
     display:flex; flex-direction:column;
     align-items:center;
     padding:22px 14px 40px;
@@ -108,7 +109,7 @@
   label.field-label{ display:block; font-weight:700; margin:14px 0 6px; color:var(--gold-light); font-size:13px; letter-spacing:.05em; text-transform:uppercase;}
   input[type=text], input[type=number]{
     width:100%; padding:11px 12px; border-radius:8px; border:2px solid var(--wood-light);
-    background:var(--cream); color:var(--ink); font-size:15px; font-family:'Nunito Sans',sans-serif;
+    background:var(--cream); color:var(--ink); font-size:16px; font-family:'Nunito Sans',sans-serif;
   }
   .player-count-row{ display:flex; align-items:center; justify-content:center; gap:16px; margin-top:8px;}
   .count-btn{
@@ -170,6 +171,27 @@
   .rank-arrow{ font-size:14px; font-weight:800; }
   .rank-arrow.up{ color:#4fd671; text-shadow:0 0 8px rgba(79,214,113,.6); }
   .rank-arrow.down{ color:#e25c5c; text-shadow:0 0 8px rgba(226,92,92,.6); }
+  .thinking-dots{ animation: thinkingPulse 1.2s ease-in-out infinite; }
+  @keyframes thinkingPulse{ 0%,100%{opacity:.3;} 50%{opacity:1;} }
+
+  .table-row-layout{ display:flex; gap:14px; align-items:flex-start; justify-content:center; flex-wrap:wrap; width:100%; max-width:820px; margin:0 auto; }
+  .side-panel{
+    background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(0,0,0,.15)), var(--wood);
+    border:2px solid var(--gold); border-radius:14px; padding:12px; width:190px; flex-shrink:0;
+  }
+  .side-panel .sp-title{ font-family:'Cinzel',serif; color:var(--gold-light); font-size:12.5px; font-weight:700; text-align:center; margin-bottom:8px; letter-spacing:.04em; text-transform:uppercase; }
+  .side-panel .sp-row{ padding:7px 3px; border-bottom:1px solid rgba(255,255,255,.1); }
+  .side-panel .sp-row:last-child{ border-bottom:none; }
+  .side-panel .sp-row.sp-current .sp-name{ color:var(--gold-light); }
+  .side-panel .sp-name{ font-weight:700; font-size:12.5px; margin-bottom:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .side-panel .sp-stats{ display:flex; justify-content:space-between; font-size:11.5px; opacity:.95; gap:4px; }
+  .side-panel .sp-score{ color:#4fd671; font-weight:800; }
+  .side-panel .sp-counter{ font-weight:800; }
+  .side-panel .sp-counter.green{ color:#4fd671; }
+  .side-panel .sp-counter.red{ color:#e25c5c; }
+  @media (max-width:640px){
+    .side-panel{ width:100%; max-width:340px; }
+  }
 
   /* Table */
   .table-wrap{
@@ -416,9 +438,10 @@ function rankOf(card){
 // ---------------- GAME STATE ----------------
 let game = null;
 
-function newGame(names){
+function newGame(names, botFlags){
   const players = names.map((n,i)=>({
-    id:'p'+i, name:n, seat:i, score:0, eliminated:false
+    id:'p'+i, name:n, seat:i, score:0, eliminated:false,
+    isBot: !!(botFlags && botFlags[i])
   }));
   game = {
     players,
@@ -438,6 +461,7 @@ function newGame(names){
     phase: 'roundIntro',
     lastRoundSummary: null,
     pendingJokerCard: null,
+    vsAI: !!(botFlags && botFlags.some(b=>b)),
   };
   startRound();
 }
@@ -511,7 +535,7 @@ function placeBid(playerId, value){
       // blind round: auto-play all cards in order immediately
       autoPlayBlindRound();
     } else {
-      game.phase = 'passToPlay';
+      game.phase = game.vsAI ? 'playing' : 'passToPlay';
     }
   }
   render();
@@ -583,6 +607,193 @@ function effectiveRank(entry){
   return rankOf(entry.card);
 }
 
+// ============================================================
+// ============== AI BOT LOGIC ===================================
+// The bot only ever reasons using information a real player
+// would legitimately have (its own hand, except in the blind
+// round; other players' declarations; and what's on the table).
+// ============================================================
+function localValidBidChoices(){
+  const K = game.roundCardCount;
+  const blind = K===1;
+  const range = blind ? [0,1] : Array.from({length:K+1},(_,i)=>i);
+  const sumSoFar = sumBidsSoFar();
+  if(isLastBidder()) return range.filter(v=>sumSoFar+v!==K);
+  return range;
+}
+
+function pickWithBluff(preferred, alternatives, bluffChance){
+  // Occasionally deviate from the "optimal" choice toward a reasonable alternative,
+  // so the bot isn't 100% predictable.
+  if(alternatives.length && Math.random() < (bluffChance!==undefined?bluffChance:0.15)){
+    return alternatives[Math.floor(Math.random()*alternatives.length)];
+  }
+  return preferred;
+}
+
+function botEstimateHandStrength(hand){
+  // Rough strength score per card, 0..1-ish. Jolly counted as flexible/strong.
+  let score = 0;
+  for(const c of hand){
+    if(c.suit==='jolly'){ score += 0.75; continue; }
+    const r = rankOf(c); // 1..40-ish range across suits
+    score += Math.max(0, (r - 8) / 32); // low cards contribute ~0, denari/re contribute close to 1
+  }
+  return score;
+}
+
+function botChooseBid(playerId){
+  const K = game.roundCardCount;
+  const blind = K===1;
+  const choices = localValidBidChoices();
+
+  if(blind){
+    // Cannot see own card. Reason only from the other players' visible cards.
+    const others = activePlayers().filter(p=>p.id!==playerId);
+    const visibleCards = others.map(p=>game.hands[p.id][0]);
+    const jollyVisible = visibleCards.some(c=>c.suit==='jolly');
+    const maxVisibleRank = Math.max(0, ...visibleCards.filter(c=>c.suit!=='jolly').map(rankOf));
+
+    if(jollyVisible){
+      // Someone else holds the jolly and can call it high at will — assume the worst.
+      const declare0 = choices.includes(0) ? 0 : choices[0];
+      return declare0;
+    }
+    // Build the pool of cards my hidden card could possibly be: full deck minus visible cards.
+    const visibleIds = new Set(visibleCards.map(c=>c.id));
+    const pool = createDeck().filter(c=>!visibleIds.has(c.id));
+    const winningCandidates = pool.filter(c=> c.suit==='jolly' || rankOf(c) > maxVisibleRank);
+    const winProbability = pool.length ? winningCandidates.length / pool.length : 0.5;
+    let want = winProbability > 0.5 ? 1 : 0;
+    // small bluff near the 50/50 boundary
+    if(winProbability > 0.38 && winProbability < 0.62 && Math.random() < 0.25){
+      want = 1 - want;
+    }
+    return choices.includes(want) ? want : choices[0];
+  }
+
+  // Normal round: estimate hand strength -> expected tricks.
+  const hand = game.hands[playerId];
+  const strength = botEstimateHandStrength(hand);
+  let estimate = Math.round(strength);
+  estimate = Math.max(0, Math.min(K, estimate));
+  if(!choices.includes(estimate)){
+    // snap to nearest valid choice
+    estimate = choices.reduce((best,v)=> Math.abs(v-estimate)<Math.abs(best-estimate) ? v : best, choices[0]);
+  }
+  // Bluff: small chance to declare one off from the honest estimate, if that's still a legal choice.
+  const alt = choices.filter(v=> Math.abs(v-estimate)===1);
+  return pickWithBluff(estimate, alt, 0.18);
+}
+
+function botChooseJokerCall(playerId, wantToWin){
+  return wantToWin ? 'alta' : 'bassa';
+}
+
+function botChooseCard(playerId){
+  const hand = game.hands[playerId];
+  const declared = game.bids[playerId];
+  const taken = game.tricksWon[playerId];
+  const stillNeeds = declared - taken;
+  const wantToWin = stillNeeds > 0;
+
+  const nonJolly = hand.filter(c=>c.suit!=='jolly');
+  const hasJolly = hand.some(c=>c.suit==='jolly');
+  const jollyCard = hand.find(c=>c.suit==='jolly');
+  const sortedAsc = nonJolly.slice().sort((a,b)=>rankOf(a)-rankOf(b));
+
+  let tableBestRank = null;
+  if(game.table.length){
+    let winner = game.table[0];
+    for(const entry of game.table) if(effectiveRank(entry) > effectiveRank(winner)) winner = entry;
+    tableBestRank = effectiveRank(winner);
+  }
+
+  // --- Leading the trick (table empty) ---
+  if(game.table.length===0){
+    if(wantToWin){
+      if(sortedAsc.length===0) return {card: jollyCard, jokerCall:'alta'};
+      // lead with a fairly strong card, but not always the very strongest (keep some in reserve)
+      const topHalf = sortedAsc.slice(Math.ceil(sortedAsc.length/2));
+      const pool = topHalf.length ? topHalf : sortedAsc;
+      const choice = pickWithBluff(pool[pool.length-1], pool.slice(0,-1), 0.3);
+      return {card: choice, jokerCall:null};
+    } else {
+      if(sortedAsc.length===0) return {card: jollyCard, jokerCall:'bassa'};
+      const choice = pickWithBluff(sortedAsc[0], sortedAsc.slice(1, Math.max(1,Math.ceil(sortedAsc.length/2))), 0.2);
+      return {card: choice, jokerCall:null};
+    }
+  }
+
+  // --- Responding, table has a current best rank ---
+  const nonJollyBeating = sortedAsc.filter(c=>rankOf(c) > tableBestRank);
+  const nonJollySafe = sortedAsc.filter(c=>rankOf(c) < tableBestRank);
+
+  if(wantToWin){
+    if(nonJollyBeating.length){
+      const choice = pickWithBluff(nonJollyBeating[0], nonJollyBeating.slice(1), 0.12);
+      return {card: choice, jokerCall:null};
+    }
+    if(hasJolly) return {card: jollyCard, jokerCall:'alta'};
+    // can't win this trick — dump the weakest card
+    const dump = sortedAsc[0] || jollyCard;
+    return {card: dump, jokerCall: dump===jollyCard ? 'bassa' : null};
+  } else {
+    if(nonJollySafe.length){
+      // discard the strongest "safe" card to reduce future risk of accidentally winning
+      const choice = pickWithBluff(nonJollySafe[nonJollySafe.length-1], nonJollySafe.slice(0,-1), 0.15);
+      return {card: choice, jokerCall:null};
+    }
+    if(hasJolly) return {card: jollyCard, jokerCall:'bassa'};
+    // forced to win (bust) — minimize the overshoot by playing the weakest beating card
+    const dump = nonJollyBeating[0] || sortedAsc[0];
+    return {card: dump, jokerCall:null};
+  }
+}
+
+// Executes one bot bidding or playing move, then re-renders after a short "thinking" pause.
+let aiThinking = false;
+function scheduleBotMove(){
+  if(aiThinking || !game || !game.vsAI) return;
+  aiThinking = true;
+  const delay = 700 + Math.random()*900;
+  setTimeout(()=>{
+    aiThinking = false;
+    if(!game || game.phase==='gameEnd') return;
+    if(game.phase==='bidding'){
+      const id = currentBidderId();
+      const p = playerById(id);
+      if(p && p.isBot){
+        const val = botChooseBid(id);
+        placeBid(id, val);
+        render();
+      }
+    } else if(game.phase==='playing'){
+      const id = currentPlayerToPlayId();
+      const p = playerById(id);
+      if(p && p.isBot){
+        const {card, jokerCall} = botChooseCard(id);
+        if(card.suit==='jolly'){
+          playCard(id, card.id); // this sets phase to jokerChoice
+          confirmJokerChoice(jokerCall);
+        } else {
+          playCard(id, card.id);
+        }
+        render();
+      }
+    } else if(game.phase==='blindJokerChoice'){
+      const ownerId = game.pendingJokerCard;
+      const p = playerById(ownerId);
+      if(p && p.isBot){
+        const declared = game.bids[ownerId];
+        const wantToWin = declared === 1;
+        confirmJokerChoice(botChooseJokerCall(ownerId, wantToWin));
+        render();
+      }
+    }
+  }, delay);
+}
+
 function resolveTrick(){
   let winner = game.table[0];
   for(const entry of game.table){
@@ -602,7 +813,7 @@ function nextTrickOrEndRound(){
     endRound();
   } else {
     game.playOrder = rotateCircleFrom(game.seatCircle, game.lastTrickWinner);
-    game.phase = 'passToPlay';
+    game.phase = game.vsAI ? 'playing' : 'passToPlay';
     render();
   }
 }
@@ -669,6 +880,23 @@ function cardBackHTML(small){
   return `<div class="card back ${small?'small':''}"></div>`;
 }
 
+// ---- Live side panel: score / declared / taken-this-round, per player ----
+function playersSidePanelHTML(playersData, currentTurnId){
+  const rows = playersData.map(p=>{
+    const colorClass = p.taken === p.declared ? 'green' : 'red';
+    const isCurrent = currentTurnId && p.id===currentTurnId;
+    return `<div class="sp-row${isCurrent?' sp-current':''}">
+      <div class="sp-name">${p.name}${p.isMe?' (tu)':''}</div>
+      <div class="sp-stats">
+        <span>Punti <span class="sp-score">${p.score}</span></span>
+        <span>Dich <b>${p.declared}</b></span>
+        <span>Prese <span class="sp-counter ${colorClass}">${p.taken}</span></span>
+      </div>
+    </div>`;
+  }).join('');
+  return `<div class="side-panel"><div class="sp-title">Giocatori</div>${rows}</div>`;
+}
+
 // ---- Card hover label: shows "7 di Coppe" / "Jolly" when hovering any card ----
 function labelForCardId(id){
   if(id==='jolly') return 'Jolly';
@@ -709,6 +937,23 @@ function render(){
     if(stuckOverlay) stuckOverlay.remove();
   }
   if(!game){ renderSetup(); return; }
+  if(game.vsAI){
+    if(game.phase==='bidding' && playerById(currentBidderId()).isBot){
+      renderBotThinking(playerById(currentBidderId()).name);
+      scheduleBotMove();
+      return;
+    }
+    if(game.phase==='playing' && playerById(currentPlayerToPlayId()).isBot){
+      renderBotThinking(playerById(currentPlayerToPlayId()).name);
+      scheduleBotMove();
+      return;
+    }
+    if(game.phase==='blindJokerChoice' && playerById(game.pendingJokerCard).isBot){
+      renderBotThinking(playerById(game.pendingJokerCard).name);
+      scheduleBotMove();
+      return;
+    }
+  }
   switch(game.phase){
     case 'roundIntro': renderRoundIntro(); break;
     case 'bidding': renderBidding(); break;
@@ -722,6 +967,17 @@ function render(){
     case 'gameEnd': renderGameEnd(); break;
     default: renderSetup();
   }
+}
+
+function renderBotThinking(name){
+  app.appendChild(el(`<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
+    ${header()}
+    ${infoBarHTML()}
+    <div class="panel center-text">
+      <div class="section-title">🤖 ${name} sta pensando<span class="thinking-dots">...</span></div>
+      ${scoreboardHTML()}
+    </div>
+  </div>`));
 }
 
 function header(){
@@ -805,6 +1061,57 @@ function renderSetup(){
   document.getElementById('backHomeFromLocal').onclick = showHome;
 }
 
+const BOT_NAME_POOL = ['Rosina','Gigetto','Adelmo','Pierina','Learco','Bruna','Osvaldo','Ermelinda','Nando','Iole'];
+function renderAISetupScreen(){
+  window._aiName = window._aiName===undefined ? '' : window._aiName;
+  window._aiBotCount = window._aiBotCount || 3;
+  const botCount = window._aiBotCount;
+
+  app.appendChild(el(`<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
+    ${header()}
+    <div class="subtitle">Tu contro l'intelligenza artificiale</div>
+    <div class="panel">
+      <div class="section-title">La tua stanza contro l'IA</div>
+      <label class="field-label">Il tuo nome</label>
+      <input type="text" id="aiPlayerName" placeholder="Il tuo nome" value="${window._aiName}">
+      <label class="field-label" style="margin-top:16px;">Quanti bot vuoi affrontare?</label>
+      <div class="player-count-row">
+        <button class="count-btn" id="botCountMinus">−</button>
+        <div class="count-display">${botCount}</div>
+        <button class="count-btn" id="botCountPlus">+</button>
+      </div>
+      <p class="center-text" style="font-size:12.5px;opacity:.7;margin-top:6px;">${botCount+1} giocatori in totale (tu + ${botCount} bot). L'IA dichiara, gioca le carte e può anche bluffare.</p>
+      <div class="btn-row">
+        <button class="btn" id="startAIBtn">Inizia partita</button>
+      </div>
+      <div class="center-text">
+        <button class="rules-link" id="backHomeFromAI">← Cambia modalità</button>
+      </div>
+    </div>
+  </div>`));
+
+  document.getElementById('aiPlayerName').oninput = (e)=>{ window._aiName = e.target.value; };
+  document.getElementById('botCountMinus').onclick = ()=>{
+    if(window._aiBotCount>1){ window._aiBotCount--; render(); }
+  };
+  document.getElementById('botCountPlus').onclick = ()=>{
+    if(window._aiBotCount<7){ window._aiBotCount++; render(); }
+  };
+  document.getElementById('startAIBtn').onclick = ()=>{
+    const humanName = (window._aiName||'').trim() || 'Tu';
+    const shuffledBotNames = BOT_NAME_POOL.slice().sort(()=>Math.random()-0.5);
+    const names = [humanName];
+    const botFlags = [false];
+    for(let i=0;i<window._aiBotCount;i++){
+      names.push(shuffledBotNames[i % shuffledBotNames.length]);
+      botFlags.push(true);
+    }
+    newGame(names, botFlags);
+    render();
+  };
+  document.getElementById('backHomeFromAI').onclick = showHome;
+}
+
 function showRulesModal(){
   const overlay = el(`<div class="modal-overlay">
     <div class="panel" style="max-width:560px;">
@@ -845,7 +1152,7 @@ function renderRoundIntro(){
   </div>`));
   document.getElementById('dealBtn').onclick = ()=>{
     game.turnPointer = 0;
-    game.phase = 'passToBid';
+    game.phase = game.vsAI ? 'bidding' : 'passToBid';
     render();
   };
 }
@@ -933,7 +1240,7 @@ function renderBidding(){
       const wasLast = isLastBidder();
       placeBid(id, val);
       if(!wasLast){
-        game.phase = 'passToBid';
+        game.phase = game.vsAI ? 'bidding' : 'passToBid';
         render();
       }
     };
@@ -957,10 +1264,19 @@ function renderPlaying(skipHandlers){
     tableBestRank = effectiveRank(winner);
   }
 
+  const sideData = activePlayers().map(pl=>({
+    id: pl.id, name: pl.name, score: pl.score,
+    declared: game.bids[pl.id], taken: game.tricksWon[pl.id],
+    isMe: game.vsAI && !pl.isBot
+  }));
+
   app.appendChild(el(`<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
     ${header()}
     ${infoBarHTML()}
-    <div class="table-wrap"><div class="table-cards-container">${tableHTML}</div></div>
+    <div class="table-row-layout">
+      ${playersSidePanelHTML(sideData, id)}
+      <div class="table-wrap"><div class="table-cards-container">${tableHTML}</div></div>
+    </div>
     <div class="panel center-text">
       <div class="section-title">${p.name}, tocca a te</div>
       <p style="opacity:.75;font-size:13px;">Dichiarazione: <strong style="color:var(--gold-light)">${game.bids[id]}</strong> · Prese finora: <strong style="color:var(--gold-light)">${game.tricksWon[id]}</strong></p>
@@ -979,7 +1295,7 @@ function renderPlaying(skipHandlers){
       playCard(id, cardId);
       if(game.phase==='jokerChoice') return; // modal will handle
       if(!wasLastPlayer && game.phase==='playing'){
-        game.phase = 'passToPlay';
+        game.phase = game.vsAI ? 'playing' : 'passToPlay';
         render();
       }
     };
@@ -1023,7 +1339,7 @@ function renderJokerModal(){
 function afterJokerResume(){
   if(game.phase==='playing' || game.phase==='trickResult' || game.phase==='roundSummary' || game.phase==='gameEnd'){
     if(game.phase==='playing'){
-      game.phase='passToPlay';
+      game.phase = game.vsAI ? 'playing' : 'passToPlay';
     }
   }
   render();
@@ -1031,12 +1347,20 @@ function afterJokerResume(){
 
 function renderTrickResult(){
   const winner = playerById(game.lastTrickWinner);
+  const sideData = activePlayers().map(pl=>({
+    id: pl.id, name: pl.name, score: pl.score,
+    declared: game.bids[pl.id], taken: game.tricksWon[pl.id],
+    isMe: game.vsAI && !pl.isBot
+  }));
   app.appendChild(el(`<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
     ${header()}
     ${infoBarHTML()}
-    <div class="table-wrap"><div class="table-cards">${game.table.map(t=>`
-      <div class="table-card-slot">${cardHTML(t.card,{})}<div class="table-card-name">${playerById(t.playerId).name}${t.jokerCall?` (${t.jokerCall})`:''}</div></div>
-    `).join('')}</div></div>
+    <div class="table-row-layout">
+      ${playersSidePanelHTML(sideData, game.lastTrickWinner)}
+      <div class="table-wrap"><div class="table-cards">${game.table.map(t=>`
+        <div class="table-card-slot">${cardHTML(t.card,{})}<div class="table-card-name">${playerById(t.playerId).name}${t.jokerCall?` (${t.jokerCall})`:''}</div></div>
+      `).join('')}</div></div>
+    </div>
     <div class="panel center-text">
       <div class="section-title">${winner.name} si aggiudica la presa!</div>
       <div class="btn-row"><button class="btn" id="contBtn">Continua</button></div>
@@ -1082,7 +1406,11 @@ function renderGameEnd(){
       <div class="center-text"><button class="rules-link" id="backHomeFromEnd">← Cambia modalità</button></div>
     </div>
   </div>`));
-  document.getElementById('newGameBtn').onclick = ()=>{ game=null; render(); };
+  document.getElementById('newGameBtn').onclick = ()=>{
+    const wasAI = game.vsAI;
+    game=null;
+    if(wasAI){ renderAISetupScreen(); } else { render(); }
+  };
   document.getElementById('backHomeFromEnd').onclick = showHome;
 }
 
@@ -1103,12 +1431,14 @@ function showHome(){
       <div class="btn-row">
         <button class="btn" id="pickLocalBtn">📱 Gioca in locale</button>
         <button class="btn secondary" id="pickOnlineBtn">🌐 Gioca online</button>
+        <button class="btn secondary" id="pickAIBtn">🤖 Gioca contro l'IA</button>
       </div>
       ${!STORAGE_READY ? `<p style="font-size:12px;color:#e88;margin-top:14px;">La modalità online non è ancora configurata (manca il KVDB_BUCKET nel file). Puoi comunque giocare in locale.</p>` : ''}
     </div>
   </div>`));
   document.getElementById('pickLocalBtn').onclick = ()=>{ game=null; render(); };
   document.getElementById('pickOnlineBtn').onclick = ()=>{ renderOnlineJoinScreen(); };
+  document.getElementById('pickAIBtn').onclick = ()=>{ renderAISetupScreen(); };
 }
 
 // ============================================================
@@ -1840,11 +2170,20 @@ function renderOnlinePlaying(skipHandlers){
     tableBestRank = rEffectiveRank(winner);
   }
 
+  const sideData = rActivePlayers(og).map(pl=>({
+    id: pl.id, name: pl.name, score: pl.score,
+    declared: og.bids[pl.id], taken: og.tricksWon[pl.id],
+    isMe: pl.id===myId
+  }));
+
   app.innerHTML = '';
   app.appendChild(el(`<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
     ${header()}
     ${onlineInfoBar()}
-    <div class="table-wrap"><div class="table-cards-container">${tableHTML}</div></div>
+    <div class="table-row-layout">
+      ${playersSidePanelHTML(sideData, id)}
+      <div class="table-wrap"><div class="table-cards-container">${tableHTML}</div></div>
+    </div>
     <div class="panel center-text">
       <p style="opacity:.75;font-size:13px;">La tua dichiarazione: <strong style="color:var(--gold-light)">${og.bids[myId]}</strong> · Le tue prese finora: <strong style="color:var(--gold-light)">${og.tricksWon[myId]||0}</strong></p>
       <p class="center-text" style="opacity:.85;">${isMe ? '🎯 Tocca a te giocare!' : `⏳ In attesa che <strong style="color:var(--gold-light)">${rPlayerById(og,id).name}</strong> giochi...`}</p>
@@ -1911,13 +2250,21 @@ function renderOnlineJoker(){
 function renderOnlineTrickResult(){
   const winner = rPlayerById(og, og.lastTrickWinner);
   const isHost = og.hostId===myId;
+  const sideData = rActivePlayers(og).map(pl=>({
+    id: pl.id, name: pl.name, score: pl.score,
+    declared: og.bids[pl.id], taken: og.tricksWon[pl.id],
+    isMe: pl.id===myId
+  }));
   app.innerHTML = '';
   app.appendChild(el(`<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
     ${header()}
     ${onlineInfoBar()}
-    <div class="table-wrap"><div class="table-cards">${og.table.map(t=>`
-      <div class="table-card-slot">${cardHTML(t.card,{})}<div class="table-card-name">${rPlayerById(og,t.playerId).name}${t.jokerCall?` (${t.jokerCall})`:''}</div></div>
-    `).join('')}</div></div>
+    <div class="table-row-layout">
+      ${playersSidePanelHTML(sideData, og.lastTrickWinner)}
+      <div class="table-wrap"><div class="table-cards">${og.table.map(t=>`
+        <div class="table-card-slot">${cardHTML(t.card,{})}<div class="table-card-name">${rPlayerById(og,t.playerId).name}${t.jokerCall?` (${t.jokerCall})`:''}</div></div>
+      `).join('')}</div></div>
+    </div>
     <div class="panel center-text">
       <div class="section-title">${winner.name}${winner.id===myId?' (tu)':''} si aggiudica la presa!</div>
       ${isHost
