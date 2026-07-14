@@ -945,6 +945,13 @@ function proceedAfterSummary(){
     render();
     return;
   }
+  if(game.vsAI && !remaining.some(p=>!p.isBot)){
+    // The human has been eliminated — the game ends here rather than
+    // continuing to simulate the remaining bots against each other.
+    game.phase = 'gameEnd';
+    render();
+    return;
+  }
   // advance dealer to next active seat after current dealer
   const seats = game.players.map(p=>p.seat).sort((a,b)=>a-b);
   let idx = seats.indexOf(game.dealerSeat);
@@ -1042,29 +1049,26 @@ function render(){
   }
   if(!game){ renderSetup(); return; }
 
-  const AI_TABLE_PHASES = ['bidding','playing','trickResult','jokerChoice','blindJokerChoice'];
-  if(game.vsAI && AI_TABLE_PHASES.includes(game.phase)){
-    renderAITable();
-    const jokerOwnerIsBot = game.phase==='blindJokerChoice' && playerById(game.pendingJokerCard).isBot;
+  const ARENA_PHASES = ['bidding','playing','trickResult','jokerChoice','blindJokerChoice'];
+  if(ARENA_PHASES.includes(game.phase)){
+    renderLocalArena();
+    const jokerOwnerIsBot = game.vsAI && game.phase==='blindJokerChoice' && playerById(game.pendingJokerCard).isBot;
     if(game.phase==='jokerChoice' || (game.phase==='blindJokerChoice' && !jokerOwnerIsBot)){
       renderJokerModal();
     }
-    if(game.phase==='bidding' && playerById(currentBidderId()).isBot) scheduleBotMove();
-    if(game.phase==='playing' && playerById(currentPlayerToPlayId()).isBot) scheduleBotMove();
-    if(jokerOwnerIsBot) scheduleBotMove();
-    if(game.phase==='trickResult') scheduleAITrickAdvance();
+    if(game.vsAI){
+      if(game.phase==='bidding' && playerById(currentBidderId()).isBot) scheduleBotMove();
+      if(game.phase==='playing' && playerById(currentPlayerToPlayId()).isBot) scheduleBotMove();
+      if(jokerOwnerIsBot) scheduleBotMove();
+    }
+    if(game.phase==='trickResult') scheduleTrickAdvance();
     return;
   }
 
   switch(game.phase){
     case 'roundIntro': renderRoundIntro(); break;
-    case 'bidding': renderBidding(); break;
     case 'passToBid': renderPassScreen('bid'); break;
-    case 'playing': renderPlaying(); break;
     case 'passToPlay': renderPassScreen('play'); break;
-    case 'jokerChoice': renderPlaying(true); renderJokerModal(); break;
-    case 'blindJokerChoice': renderBlindReveal(); renderJokerModal(); break;
-    case 'trickResult': renderTrickResult(); break;
     case 'roundSummary': renderRoundSummary(); break;
     case 'gameEnd': renderGameEnd(); break;
     default: renderSetup();
@@ -1083,22 +1087,31 @@ function computeSeatPositions(n){
   });
 }
 
-let aiTrickAdvanceScheduled = false;
-function scheduleAITrickAdvance(){
-  if(aiTrickAdvanceScheduled || !game || game.phase!=='trickResult') return;
-  aiTrickAdvanceScheduled = true;
+let trickAdvanceScheduled = false;
+function scheduleTrickAdvance(){
+  if(trickAdvanceScheduled || !game || game.phase!=='trickResult') return;
+  trickAdvanceScheduled = true;
   setTimeout(()=>{
-    aiTrickAdvanceScheduled = false;
+    trickAdvanceScheduled = false;
     if(!game || game.phase!=='trickResult') return;
     nextTrickOrEndRound();
   }, 1500);
 }
 
-function renderAITable(){
+function renderLocalArena(){
   const phase = game.phase;
   const blind = game.roundCardCount===1;
-  const human = activePlayers().find(p=>!p.isBot);
-  const opponents = activePlayers().filter(p=>p.isBot);
+  // In AI mode "me" is always the human. In pass-and-play, "me" is whoever
+  // currently holds the device (i.e. whoever's turn it is right now).
+  let meId;
+  if(game.vsAI){
+    meId = activePlayers().find(p=>!p.isBot).id;
+  } else if(phase==='bidding') meId = currentBidderId();
+  else if(phase==='playing' || phase==='jokerChoice') meId = currentPlayerToPlayId();
+  else if(phase==='blindJokerChoice') meId = game.pendingJokerCard;
+  else if(phase==='trickResult') meId = game.lastTrickWinner;
+  const me = playerById(meId);
+  const opponents = activePlayers().filter(p=>p.id!==meId);
   const seatPositions = computeSeatPositions(opponents.length);
 
   let currentTurnId = null;
@@ -1143,8 +1156,8 @@ function renderAITable(){
     : `<div class="empty-table-msg">${phase==='bidding' ? '' : 'Nessuna carta ancora giocata in questa presa.'}</div>`;
 
   let bottomHTML = '';
-  if(phase==='bidding' && human){
-    const isMe = currentTurnId===human.id;
+  if(phase==='bidding' && me){
+    const isMe = currentTurnId===me.id;
     const K = game.roundCardCount;
     const sumSoFar = sumBidsSoFar();
     const isLast = isLastBidder();
@@ -1153,7 +1166,7 @@ function renderAITable(){
       handSection = `<p class="center-text" style="opacity:.8;font-size:13px;">La tua carta è nascosta (vedi quelle degli avversari intorno al tavolo).</p>
         <div class="hand-row">${cardBackHTML(false)}</div>`;
     } else {
-      handSection = `<div class="hand-row">${game.hands[human.id].map(c=>cardHTML(c,{small:true})).join('')}</div>
+      handSection = `<div class="hand-row">${game.hands[me.id].map(c=>cardHTML(c,{small:true})).join('')}</div>
         ${cardHoverLabelHTML('cardHoverLabel')}`;
     }
     let actionSection = '';
@@ -1172,7 +1185,7 @@ function renderAITable(){
           return `<button class="bid-btn" data-val="${v}" ${disabled?'disabled':''}>${v}</button>`;
         }).join('');
       }
-      actionSection = `<div class="section-title" style="margin-top:10px;">🎯 Quante prese farai?</div><div class="bid-picker">${bidButtons}</div>`;
+      actionSection = `<div class="section-title" style="margin-top:10px;">🎯 ${me.name}, quante prese farai?</div><div class="bid-picker">${bidButtons}</div>`;
     } else {
       actionSection = `<p class="center-text" style="opacity:.75;margin-top:10px;font-size:13px;">Il tuo turno arriverà a breve...</p>`;
     }
@@ -1181,22 +1194,23 @@ function renderAITable(){
       ${handSection}
       ${actionSection}
     </div>`;
-  } else if((phase==='playing' || phase==='jokerChoice') && human){
-    const isMe = currentTurnId===human.id && phase==='playing';
+  } else if((phase==='playing' || phase==='jokerChoice') && me){
+    const isMe = currentTurnId===me.id && phase==='playing';
     bottomHTML = `<div class="panel center-text">
-      <p style="opacity:.75;font-size:13px;">Dichiarazione: <strong style="color:var(--gold-light)">${game.bids[human.id]}</strong> · Prese finora: <strong style="color:var(--gold-light)">${game.tricksWon[human.id]}</strong></p>
-      <div class="hand-row">${game.hands[human.id].map(c=>cardHTML(c,{clickable:isMe})).join('')}</div>
+      <div class="section-title">${me.name}</div>
+      <p style="opacity:.75;font-size:13px;">Dichiarazione: <strong style="color:var(--gold-light)">${game.bids[me.id]}</strong> · Prese finora: <strong style="color:var(--gold-light)">${game.tricksWon[me.id]}</strong></p>
+      <div class="hand-row">${game.hands[me.id].map(c=>cardHTML(c,{clickable:isMe})).join('')}</div>
       ${cardHoverLabelHTML('cardHoverLabel')}
     </div>`;
-  } else if(phase==='trickResult' && human){
+  } else if(phase==='trickResult' && me){
     const winnerName = playerById(game.lastTrickWinner).name;
     bottomHTML = `<div class="panel center-text">
-      <div class="section-title">${winnerName}${game.lastTrickWinner===human.id?' (tu)':''} si aggiudica la presa!</div>
-      <div class="hand-row">${game.hands[human.id].map(c=>cardHTML(c,{small:true})).join('')}</div>
+      <div class="section-title">${winnerName}${game.lastTrickWinner===me.id?' (tu)':''} si aggiudica la presa!</div>
+      <div class="hand-row">${game.hands[me.id].map(c=>cardHTML(c,{small:true})).join('')}</div>
     </div>`;
-  } else if(human){
+  } else if(me){
     bottomHTML = `<div class="panel center-text">
-      <div class="hand-row">${game.hands[human.id].map(c=>cardHTML(c,{small:true})).join('')}</div>
+      <div class="hand-row">${game.hands[me.id].map(c=>cardHTML(c,{small:true})).join('')}</div>
     </div>`;
   }
 
@@ -1213,19 +1227,29 @@ function renderAITable(){
 
   wireCardHover('cardHoverLabel');
 
-  if(phase==='bidding' && human && currentTurnId===human.id){
+  if(phase==='bidding' && me && currentTurnId===me.id){
     document.querySelectorAll('.bid-btn').forEach(btn=>{
       btn.onclick = ()=>{
         if(btn.disabled) return;
-        placeBid(human.id, parseInt(btn.dataset.val));
+        const wasLast = isLastBidder();
+        placeBid(me.id, parseInt(btn.dataset.val));
+        if(!wasLast && !game.vsAI){
+          game.phase = 'passToBid';
+          render();
+        }
       };
     });
   }
-  if(phase==='playing' && human && currentTurnId===human.id){
+  if(phase==='playing' && me && currentTurnId===me.id){
     document.querySelectorAll('.hand-row .card.clickable').forEach(cardEl=>{
       cardEl.onclick = ()=>{
-        playCard(human.id, cardEl.dataset.card);
-        if(game.phase!=='jokerChoice') render();
+        const wasLastPlayer = game.turnPointer === game.playOrder.length-1;
+        playCard(me.id, cardEl.dataset.card);
+        if(game.phase==='jokerChoice') return;
+        if(!wasLastPlayer && !game.vsAI && game.phase==='playing'){
+          game.phase = 'passToPlay';
+          render();
+        }
       };
     });
   }
@@ -1257,6 +1281,7 @@ function infoBarHTML(){
 
 // ---- Setup screen ----
 function renderSetup(){
+  app.innerHTML = '';
   window._setupCount = window._setupCount || 4;
   window._setupNames = window._setupNames || Array(8).fill('').map((_,i)=>'');
   const count = window._setupCount;
@@ -1291,10 +1316,10 @@ function renderSetup(){
   </div>`));
 
   document.getElementById('countMinus').onclick = ()=>{
-    if(window._setupCount>2){ window._setupCount--; render(); }
+    if(window._setupCount>2){ window._setupCount--; renderSetup(); }
   };
   document.getElementById('countPlus').onclick = ()=>{
-    if(window._setupCount<8){ window._setupCount++; render(); }
+    if(window._setupCount<8){ window._setupCount++; renderSetup(); }
   };
   document.querySelectorAll('.name-input').forEach(inp=>{
     inp.oninput = (e)=>{ window._setupNames[parseInt(e.target.dataset.idx)] = e.target.value; };
@@ -1314,6 +1339,7 @@ function renderSetup(){
 
 const BOT_NAME_POOL = ['Rosina','Gigetto','Adelmo','Pierina','Learco','Bruna','Osvaldo','Ermelinda','Nando','Iole'];
 function renderAISetupScreen(){
+  app.innerHTML = '';
   window._aiName = window._aiName===undefined ? '' : window._aiName;
   window._aiBotCount = window._aiBotCount || 3;
   window._aiDifficulty = window._aiDifficulty || 'facile';
@@ -1358,13 +1384,13 @@ function renderAISetupScreen(){
 
   document.getElementById('aiPlayerName').oninput = (e)=>{ window._aiName = e.target.value; };
   document.getElementById('botCountMinus').onclick = ()=>{
-    if(window._aiBotCount>1){ window._aiBotCount--; render(); }
+    if(window._aiBotCount>1){ window._aiBotCount--; renderAISetupScreen(); }
   };
   document.getElementById('botCountPlus').onclick = ()=>{
-    if(window._aiBotCount<7){ window._aiBotCount++; render(); }
+    if(window._aiBotCount<7){ window._aiBotCount++; renderAISetupScreen(); }
   };
   document.querySelectorAll('#diffRow .btn').forEach(btn=>{
-    btn.onclick = ()=>{ window._aiDifficulty = btn.dataset.diff; render(); };
+    btn.onclick = ()=>{ window._aiDifficulty = btn.dataset.diff; renderAISetupScreen(); };
   });
   document.getElementById('startAIBtn').onclick = ()=>{
     const humanName = (window._aiName||'').trim() || 'Tu';
@@ -2180,11 +2206,11 @@ function renderOnline(){
   if(me && me.removedByHost){ renderRemovedScreen(); return; }
   switch(og.phase){
     case 'lobby': renderLobby(); break;
-    case 'bidding': renderOnlineBidding(); break;
-    case 'playing': renderOnlinePlaying(); break;
+    case 'bidding': renderOnlineArena(); break;
+    case 'playing': renderOnlineArena(); break;
     case 'jokerChoice':
     case 'blindJokerChoice': renderOnlineJoker(); break;
-    case 'trickResult': renderOnlineTrickResult(); break;
+    case 'trickResult': renderOnlineArena(); break;
     case 'roundSummary': renderOnlineRoundSummary(); break;
     case 'gameEnd': renderOnlineGameEnd(); break;
     default: renderOnlineJoinScreen();
@@ -2345,74 +2371,127 @@ function renderLobby(){
   };
 }
 
-function renderOnlineBidding(){
-  const id = rCurrentBidderId(og);
-  const isMe = id===myId;
-  const K = og.roundCardCount;
-  const blind = K===1;
-  const myHand = og.hands[myId] || [];
-  const sumSoFar = rSumBidsSoFar(og);
-  const isLast = rIsLastBidder(og);
+function renderOnlineArena(){
+  const phase = og.phase;
+  const blind = og.roundCardCount===1;
+  const me = rPlayerById(og, myId);
+  const opponents = rActivePlayers(og).filter(p=>p.id!==myId);
+  const seatPositions = computeSeatPositions(opponents.length);
 
-  const declaredList = og.bidOrder.map(pid=>{
-    const p = rPlayerById(og,pid);
-    const b = og.bids[pid];
-    const label = b===null ? '…' : (blind ? (b===1?'Prendo':'Non prendo') : b);
-    return `<div class="round-summary-row"><span class="name">${p.name}${pid===myId?' (tu)':''}</span><span>${label}</span></div>`;
+  let currentTurnId = null;
+  if(phase==='bidding') currentTurnId = rCurrentBidderId(og);
+  else if(phase==='playing' || phase==='jokerChoice') currentTurnId = rCurrentPlayerToPlayId(og);
+  else if(phase==='blindJokerChoice') currentTurnId = og.pendingJokerCard;
+  else if(phase==='trickResult') currentTurnId = og.lastTrickWinner;
+
+  const seatsHTML = opponents.map((opp,i)=>{
+    const pos = seatPositions[i];
+    const isTurn = opp.id===currentTurnId;
+    const cardsRemaining = og.hands[opp.id] ? og.hands[opp.id].length : 0;
+    let infoLine = '';
+    if(phase==='bidding'){
+      if(blind){
+        infoLine = og.bids[opp.id]===null ? '…' : (og.bids[opp.id]===1?'Prendo':'Non prendo');
+      } else {
+        infoLine = og.bids[opp.id]===null ? '…' : `Dich ${og.bids[opp.id]}`;
+      }
+    } else {
+      const declared = og.bids[opp.id], taken = og.tricksWon[opp.id];
+      const cls = taken===declared ? 'green' : 'red';
+      infoLine = `D ${declared} · P <span class="${cls}">${taken}</span>`;
+    }
+    let cardVisual;
+    if(blind && phase==='bidding' && og.hands[opp.id]){
+      cardVisual = cardHTML(og.hands[opp.id][0], {small:true});
+    } else {
+      cardVisual = `${cardBackHTML(true)}<span class="seat-count">×${cardsRemaining}</span>`;
+    }
+    return `<div class="opponent-seat${isTurn?' thinking':''}" style="left:${pos.left}%; top:${pos.top}%;">
+      <div class="seat-cards">${cardVisual}</div>
+      <div class="seat-name">${opp.name}${isTurn?' <span class="thinking-dots">●●●</span>':''}</div>
+      <div class="seat-info">${infoLine} · <span class="sp-score" style="color:#4fd671;">${opp.score}</span>pt</div>
+    </div>`;
   }).join('');
 
-  let handSection;
-  if(blind){
-    const others = og.playOrder.filter(pid=>pid!==myId).map(pid=>{
-      const c = og.hands[pid][0];
-      return `<div class="table-card-slot">${cardHTML(c,{small:true})}<div class="table-card-name">${rPlayerById(og,pid).name}</div></div>`;
-    }).join('');
-    handSection = `<p class="center-text" style="opacity:.8;font-size:13px;">Le carte degli altri (la tua è nascosta):</p>
-      <div class="hand-row">${others}</div>
-      <div class="hand-row">${cardBackHTML(true)}</div>
-      ${cardHoverLabelHTML('cardHoverLabel')}`;
-  } else {
-    handSection = `<p class="center-text" style="opacity:.8;font-size:13px;">Le tue carte:</p>
-      <div class="hand-row">${myHand.map(c=>cardHTML(c,{small:true})).join('')}</div>
-      ${cardHoverLabelHTML('cardHoverLabel')}`;
-  }
+  const tableCardsHTML = (og.table && og.table.length)
+    ? `<div class="table-cards">${og.table.map(t=>`
+        <div class="table-card-slot">${cardHTML(t.card,{small:true})}<div class="table-card-name">${rPlayerById(og,t.playerId).name}${t.jokerCall?` (${t.jokerCall})`:''}</div></div>
+      `).join('')}</div>`
+    : `<div class="empty-table-msg">${phase==='bidding' ? '' : 'Nessuna carta ancora giocata in questa presa.'}</div>`;
 
-  let actionSection;
-  if(isMe){
-    let bidButtons;
+  let bottomHTML = '';
+  if(phase==='bidding' && me){
+    const isMe = currentTurnId===myId;
+    const K = og.roundCardCount;
+    const sumSoFar = rSumBidsSoFar(og);
+    const isLast = rIsLastBidder(og);
+    let handSection;
     if(blind){
-      bidButtons = [0,1].map(v=>{
-        const would = sumSoFar+v;
-        const disabled = isLast && would===1;
-        return `<button class="bid-btn" data-val="${v}" ${disabled?'disabled':''}>${v===1?'Prendo':'No'}</button>`;
-      }).join('');
+      handSection = `<p class="center-text" style="opacity:.8;font-size:13px;">La tua carta è nascosta (vedi quelle degli avversari intorno al tavolo).</p>
+        <div class="hand-row">${cardBackHTML(false)}</div>`;
     } else {
-      bidButtons = Array.from({length:K+1}).map((_,v)=>{
-        const would = sumSoFar+v;
-        const disabled = isLast && would===K;
-        return `<button class="bid-btn" data-val="${v}" ${disabled?'disabled':''}>${v}</button>`;
-      }).join('');
+      handSection = `<div class="hand-row">${(og.hands[myId]||[]).map(c=>cardHTML(c,{small:true})).join('')}</div>
+        ${cardHoverLabelHTML('cardHoverLabel')}`;
     }
-    actionSection = `<div class="section-title" style="margin-top:16px;">🎯 Quante prese farai?</div>
-      <div class="bid-picker">${bidButtons}</div>`;
-  } else {
-    actionSection = `<p class="center-text" style="opacity:.8;margin-top:16px;">⏳ In attesa che <strong style="color:var(--gold-light)">${rPlayerById(og,id).name}</strong> dichiari...</p>`;
+    let actionSection = '';
+    if(isMe){
+      let bidButtons;
+      if(blind){
+        bidButtons = [0,1].map(v=>{
+          const would = sumSoFar+v;
+          const disabled = isLast && would===1;
+          return `<button class="bid-btn" data-val="${v}" ${disabled?'disabled':''}>${v===1?'Prendo':'No'}</button>`;
+        }).join('');
+      } else {
+        bidButtons = Array.from({length:K+1}).map((_,v)=>{
+          const would = sumSoFar+v;
+          const disabled = isLast && would===K;
+          return `<button class="bid-btn" data-val="${v}" ${disabled?'disabled':''}>${v}</button>`;
+        }).join('');
+      }
+      actionSection = `<div class="section-title" style="margin-top:10px;">🎯 Quante prese farai?</div><div class="bid-picker">${bidButtons}</div>`;
+    } else {
+      actionSection = `<p class="center-text" style="opacity:.75;margin-top:10px;font-size:13px;">⏳ In attesa che <strong style="color:var(--gold-light)">${rPlayerById(og,currentTurnId).name}</strong> dichiari...</p>`;
+    }
+    bottomHTML = `<div class="panel center-text">
+      <div class="section-title">Le tue carte</div>
+      ${handSection}
+      ${actionSection}
+    </div>`;
+  } else if((phase==='playing' || phase==='jokerChoice') && me){
+    const isMe = currentTurnId===myId && phase==='playing';
+    bottomHTML = `<div class="panel center-text">
+      <p style="opacity:.75;font-size:13px;">La tua dichiarazione: <strong style="color:var(--gold-light)">${og.bids[myId]}</strong> · Le tue prese finora: <strong style="color:var(--gold-light)">${og.tricksWon[myId]||0}</strong></p>
+      <p class="center-text" style="opacity:.85;">${isMe ? '🎯 Tocca a te giocare!' : `⏳ In attesa che <strong style="color:var(--gold-light)">${rPlayerById(og,currentTurnId).name}</strong> giochi...`}</p>
+      <div class="hand-row">${(og.hands[myId]||[]).map(c=>cardHTML(c,{clickable:isMe})).join('')}</div>
+      ${cardHoverLabelHTML('cardHoverLabel')}
+    </div>`;
+  } else if(phase==='trickResult' && me){
+    const winner = rPlayerById(og, og.lastTrickWinner);
+    const isHost = og.hostId===myId;
+    bottomHTML = `<div class="panel center-text">
+      <div class="section-title">${winner.name}${winner.id===myId?' (tu)':''} si aggiudica la presa!</div>
+      ${isHost
+        ? `<div class="btn-row"><button class="btn" id="contBtn">Continua ora</button></div><p style="font-size:12px;opacity:.6;">Si continua automaticamente tra pochi secondi...</p>`
+        : `<p class="center-text" style="opacity:.7;font-size:13px;">Si passa alla prossima mano tra poco...</p>`}
+    </div>`;
   }
 
   app.innerHTML = '';
   app.appendChild(el(`<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
     ${header()}
     ${onlineInfoBar()}
-    <div class="panel center-text">
-      ${handSection}
-      <div style="margin-top:14px;">${declaredList}</div>
-      ${actionSection}
-      ${onlineScoreboard(id)}
+    <div class="table-arena">
+      <div class="table-felt"></div>
+      ${seatsHTML}
+      <div class="table-center-cards">${tableCardsHTML}</div>
     </div>
+    ${bottomHTML}
   </div>`));
+
   wireCardHover('cardHoverLabel');
 
-  if(isMe){
+  if(phase==='bidding' && currentTurnId===myId){
     document.querySelectorAll('.bid-btn').forEach(btn=>{
       btn.onclick = ()=>{
         if(btn.disabled) return;
@@ -2421,49 +2500,7 @@ function renderOnlineBidding(){
       };
     });
   }
-}
-
-function renderOnlinePlaying(skipHandlers){
-  const id = rCurrentPlayerToPlayId(og);
-  const isMe = id===myId;
-  const myHand = og.hands[myId] || [];
-
-  const tableHTML = og.table.length ? `<div class="table-cards">${og.table.map(t=>`
-    <div class="table-card-slot">${cardHTML(t.card,{})}<div class="table-card-name">${rPlayerById(og,t.playerId).name}${t.jokerCall?` (${t.jokerCall})`:''}</div></div>
-  `).join('')}</div>` : `<div class="empty-table-msg">Nessuna carta ancora giocata in questa presa.</div>`;
-
-  let tableBestRank = null;
-  if(og.table.length){
-    let winner = og.table[0];
-    for(const entry of og.table) if(rEffectiveRank(entry) > rEffectiveRank(winner)) winner = entry;
-    tableBestRank = rEffectiveRank(winner);
-  }
-
-  const sideData = rActivePlayers(og).map(pl=>({
-    id: pl.id, name: pl.name, score: pl.score,
-    declared: og.bids[pl.id], taken: og.tricksWon[pl.id],
-    isMe: pl.id===myId
-  }));
-
-  app.innerHTML = '';
-  app.appendChild(el(`<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
-    ${header()}
-    ${onlineInfoBar()}
-    <div class="table-row-layout">
-      ${playersSidePanelHTML(sideData, id)}
-      <div class="table-wrap"><div class="table-cards-container">${tableHTML}</div></div>
-    </div>
-    <div class="panel center-text">
-      <p style="opacity:.75;font-size:13px;">La tua dichiarazione: <strong style="color:var(--gold-light)">${og.bids[myId]}</strong> · Le tue prese finora: <strong style="color:var(--gold-light)">${og.tricksWon[myId]||0}</strong></p>
-      <p class="center-text" style="opacity:.85;">${isMe ? '🎯 Tocca a te giocare!' : `⏳ In attesa che <strong style="color:var(--gold-light)">${rPlayerById(og,id).name}</strong> giochi...`}</p>
-      <div class="hand-row">${myHand.map(c=>cardHTML(c,{clickable:isMe && !skipHandlers})).join('')}</div>
-      ${cardHoverLabelHTML('cardHoverLabel')}
-      ${onlineScoreboard(id)}
-    </div>
-  </div>`));
-  wireCardHover('cardHoverLabel', tableBestRank);
-
-  if(isMe && !skipHandlers){
+  if(phase==='playing' && currentTurnId===myId){
     document.querySelectorAll('.hand-row .card.clickable').forEach(cardEl=>{
       cardEl.onclick = ()=>{
         const cardId = cardEl.dataset.card;
@@ -2471,19 +2508,10 @@ function renderOnlinePlaying(skipHandlers){
       };
     });
   }
-}
-
-function renderOnlineBlindRevealUnderlying(){
-  const tableHTML = `<div class="table-cards">${og.table.map(t=>`
-    <div class="table-card-slot">${cardHTML(t.card,{})}<div class="table-card-name">${rPlayerById(og,t.playerId).name}</div></div>
-  `).join('')}</div>`;
-  app.innerHTML = '';
-  app.appendChild(el(`<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
-    ${header()}
-    ${onlineInfoBar()}
-    <div class="table-wrap"><div class="table-cards-container">${tableHTML}</div></div>
-    <div class="panel center-text"><div class="section-title">Si rivela il Jolly...</div></div>
-  </div>`));
+  if(phase==='trickResult'){
+    const contBtn = document.getElementById('contBtn');
+    if(contBtn) contBtn.onclick = ()=>{ actOnline(state=>{ rNextTrickOrEndRound(state); }); };
+  }
 }
 
 function renderOnlineJoker(){
@@ -2492,8 +2520,7 @@ function renderOnlineJoker(){
 
   const ownerId = og.phase==='blindJokerChoice' ? og.pendingJokerCard : og.pendingJokerCard.playerId;
   const isMe = ownerId===myId;
-  if(og.phase==='jokerChoice') renderOnlinePlaying(true);
-  else renderOnlineBlindRevealUnderlying();
+  renderOnlineArena();
 
   if(isMe){
     const overlay = el(`<div class="modal-overlay" id="jokerOverlay"><div class="panel" style="max-width:420px;">
@@ -2513,36 +2540,6 @@ function renderOnlineJoker(){
       <p class="center-text" style="opacity:.85;">${rPlayerById(og,ownerId).name} sta decidendo se vale alta o bassa...</p>
     </div></div>`);
     document.body.appendChild(overlay);
-  }
-}
-
-function renderOnlineTrickResult(){
-  const winner = rPlayerById(og, og.lastTrickWinner);
-  const isHost = og.hostId===myId;
-  const sideData = rActivePlayers(og).map(pl=>({
-    id: pl.id, name: pl.name, score: pl.score,
-    declared: og.bids[pl.id], taken: og.tricksWon[pl.id],
-    isMe: pl.id===myId
-  }));
-  app.innerHTML = '';
-  app.appendChild(el(`<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
-    ${header()}
-    ${onlineInfoBar()}
-    <div class="table-row-layout">
-      ${playersSidePanelHTML(sideData, og.lastTrickWinner)}
-      <div class="table-wrap"><div class="table-cards">${og.table.map(t=>`
-        <div class="table-card-slot">${cardHTML(t.card,{})}<div class="table-card-name">${rPlayerById(og,t.playerId).name}${t.jokerCall?` (${t.jokerCall})`:''}</div></div>
-      `).join('')}</div></div>
-    </div>
-    <div class="panel center-text">
-      <div class="section-title">${winner.name}${winner.id===myId?' (tu)':''} si aggiudica la presa!</div>
-      ${isHost
-        ? `<div class="btn-row"><button class="btn" id="contBtn">Continua ora</button></div><p style="font-size:12px;opacity:.6;">Si continua automaticamente tra pochi secondi...</p>`
-        : `<p class="center-text" style="opacity:.7;font-size:13px;">Si passa alla prossima mano tra poco...</p>`}
-    </div>
-  </div>`));
-  if(isHost){
-    document.getElementById('contBtn').onclick = ()=>{ actOnline(state=>{ rNextTrickOrEndRound(state); }); };
   }
 }
 
