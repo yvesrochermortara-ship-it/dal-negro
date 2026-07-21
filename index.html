@@ -159,11 +159,21 @@
     content:'DN'; font-family:'Cinzel',serif; font-weight:800; color:var(--gold-light);
     font-size:16px; opacity:.85;
   }
+  .card.back.tiny::after{ content:''; }
   .card.clickable{ cursor:pointer; transition:transform .12s ease, box-shadow .12s ease;}
   .card.clickable:hover{ transform:translateY(-8px); box-shadow:0 10px 18px rgba(0,0,0,.5); }
   .card .label{ font-size:9px; font-weight:700; letter-spacing:.03em; text-transform:uppercase; opacity:.75;}
 
   .hand-row{ display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin:14px 0;}
+  .hand-row.my-hand-row{ gap:14px; }
+  .hand-row.my-hand-row .card{ width:108px; height:180px; border-radius:12px; }
+  .hand-row.my-hand-row .card .corner{ font-size:19px; }
+  .hand-row.my-hand-row .card .icon{ width:46px; height:46px; }
+  .hand-row.my-hand-row .card .label{ font-size:13px; }
+  .hand-row.my-hand-row .card.photo img.face{ border-radius:10px; }
+  @media (max-width:640px){
+    .hand-row.my-hand-row .card{ width:88px; height:146px; }
+  }
   .card-hover-label{
     min-height:22px; text-align:center; font-family:'Cinzel',serif; font-weight:700;
     color:var(--gold-light); font-size:15px; letter-spacing:.04em; margin:2px 0 10px;
@@ -174,7 +184,7 @@
   .thinking-dots{ animation: thinkingPulse 1.2s ease-in-out infinite; }
   @keyframes thinkingPulse{ 0%,100%{opacity:.3;} 50%{opacity:1;} }
 
-  .table-arena{ position:relative; width:100%; max-width:680px; height:300px; margin:6px auto 6px; }
+  .table-arena{ position:relative; width:100%; max-width:720px; height:360px; margin:30px auto 4px; }
   .table-arena .table-felt{
     position:absolute; inset:0;
     background: radial-gradient(ellipse at 50% 45%, var(--felt-light), var(--felt) 70%);
@@ -182,34 +192,36 @@
     box-shadow:inset 0 0 50px rgba(0,0,0,.5);
   }
   .table-center-cards{
-    position:absolute; top:60%; left:50%; transform:translate(-50%,-50%);
+    position:absolute; top:68%; left:50%; transform:translate(-50%,-50%);
     width:min(88%,420px); display:flex; justify-content:center; z-index:2;
   }
   .table-center-cards .empty-table-msg{ font-size:12.5px; }
   .opponent-seat{
     position:absolute; transform:translate(-50%,-50%);
     display:flex; flex-direction:column; align-items:center; gap:3px;
-    width:82px; text-align:center; z-index:3;
+    width:112px; text-align:center; z-index:3;
   }
-  .opponent-seat .seat-cards{ display:flex; align-items:center; justify-content:center; gap:3px; }
-  .card.back.tiny{ width:24px; height:35px; border-radius:4px; border-width:1.5px; flex-shrink:0; }
-  .opponent-seat .seat-count{ font-size:10.5px; font-weight:800; color:var(--cream); opacity:.85; }
+  .opponent-seat .seat-cards{ display:flex; align-items:center; justify-content:center; gap:4px; }
+  .card.back.tiny{ width:48px; height:70px; border-radius:6px; border-width:2px; flex-shrink:0; }
+  .opponent-seat .seat-count{ font-size:16px; font-weight:800; color:var(--cream); opacity:.95; }
   .opponent-seat .seat-name{
-    font-size:11.5px; font-weight:700; background:rgba(0,0,0,.4); padding:2px 8px; border-radius:10px;
+    font-size:12.5px; font-weight:700; background:rgba(0,0,0,.4); padding:2px 9px; border-radius:10px;
     white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:ellipsis; border:1px solid transparent;
   }
   .opponent-seat.thinking .seat-name{
     color:var(--gold-light); border-color:var(--gold); text-shadow:0 0 8px rgba(201,162,39,.6);
   }
-  .opponent-seat .seat-info{ font-size:10px; opacity:.85; }
+  .opponent-seat .seat-info{ font-size:15px; font-weight:700; opacity:.95; line-height:1.25; }
+  .opponent-seat .seat-info .fuchsia{ color:#e84fd6; font-weight:800; }
   .opponent-seat .seat-info .green{ color:#4fd671; font-weight:800; }
   .opponent-seat .seat-info .red{ color:#e25c5c; font-weight:800; }
   @media (max-width:640px){
-    .table-arena{ height:250px; }
-    .opponent-seat{ width:66px; }
-    .card.back.tiny{ width:19px; height:28px; }
-    .opponent-seat .seat-name{ font-size:10px; padding:2px 6px; }
-    .opponent-seat .seat-info{ font-size:9px; }
+    .table-arena{ height:300px; margin:26px auto 2px; }
+    .opponent-seat{ width:86px; }
+    .card.back.tiny{ width:34px; height:50px; }
+    .opponent-seat .seat-name{ font-size:10.5px; padding:1px 6px; }
+    .opponent-seat .seat-info{ font-size:12px; }
+    .opponent-seat .seat-count{ font-size:13px; }
   }
 
   .table-row-layout{ display:flex; gap:14px; align-items:flex-start; justify-content:center; flex-wrap:wrap; width:100%; max-width:820px; margin:0 auto; }
@@ -334,6 +346,17 @@
   .center-text{ text-align:center; }
   .hidden{ display:none !important; }
   .flourish{ text-align:center; color:var(--gold); opacity:.5; letter-spacing:.5em; font-size:12px; margin:4px 0 16px;}
+  @media (max-width:640px){
+    #app{ padding:16px 10px 24px; }
+    h1.title{ margin:4px 0 0; font-size:clamp(24px,7vw,34px); }
+    .flourish{ margin:2px 0 8px; }
+    .info-bar{ margin-bottom:6px; gap:6px; }
+    .chip{ padding:4px 10px; font-size:11px; }
+    #globalToolbar{ top:calc(8px + env(safe-area-inset-top)); }
+    .icon-btn{ width:32px; height:32px; font-size:13px; }
+    .panel{ padding:16px; }
+    .section-title{ font-size:16px; margin-bottom:4px; }
+  }
 </style>
 </head>
 <body>
@@ -987,8 +1010,9 @@ function cardHTML(card, opts){
   return `<div class="${cls.join(' ')}" data-card="${card.id}"><img class="face" src="${src}" alt="${card.suit==='jolly'?'Jolly':valueLabel(card.value)+' di '+SUIT_LABEL[card.suit]}" draggable="false"></div>`;
 }
 
-function cardBackHTML(small){
-  return `<div class="card back ${small?'small':''}"></div>`;
+function cardBackHTML(size){
+  const cls = size==='tiny' ? 'tiny' : (size ? 'small' : '');
+  return `<div class="card back ${cls}"></div>`;
 }
 
 // ---- Live side panel: score / declared / taken-this-round, per player ----
@@ -1019,27 +1043,59 @@ function labelForCardId(id){
 function cardHoverLabelHTML(id){
   return `<div class="card-hover-label" id="${id}">&nbsp;</div>`;
 }
+let hoverLabelEl = null;
+let hoverTableBestRank = null;
+function labelHTMLFor(cardEl){
+  const id = cardEl.dataset.card;
+  let html = labelForCardId(id);
+  if((hoverTableBestRank!==null && hoverTableBestRank!==undefined) && id!=='jolly'){
+    const idx = id.lastIndexOf('-');
+    const suit = id.slice(0, idx);
+    const value = parseInt(id.slice(idx+1));
+    const r = rankOf({suit, value});
+    html += r > hoverTableBestRank
+      ? ' <span class="rank-arrow up">▲</span>'
+      : ' <span class="rank-arrow down">▼</span>';
+  }
+  return html;
+}
 function wireCardHover(labelId, tableBestRank){
-  const label = document.getElementById(labelId);
-  if(!label) return;
-  document.querySelectorAll('.card[data-card]').forEach(cardEl=>{
-    cardEl.addEventListener('mouseenter', ()=>{
-      const id = cardEl.dataset.card;
-      let html = labelForCardId(id);
-      if((tableBestRank!==null && tableBestRank!==undefined) && id!=='jolly'){
-        const idx = id.lastIndexOf('-');
-        const suit = id.slice(0, idx);
-        const value = parseInt(id.slice(idx+1));
-        const r = rankOf({suit, value});
-        html += r > tableBestRank
-          ? ' <span class="rank-arrow up">▲</span>'
-          : ' <span class="rank-arrow down">▼</span>';
-      }
-      label.innerHTML = html;
-    });
-    cardEl.addEventListener('mouseleave', ()=>{ label.innerHTML = '&nbsp;'; });
+  hoverLabelEl = document.getElementById(labelId);
+  hoverTableBestRank = (tableBestRank!==undefined) ? tableBestRank : null;
+  if(!hoverLabelEl) return;
+  document.querySelectorAll('.hand-row.my-hand-row .card[data-card]').forEach(cardEl=>{
+    cardEl.addEventListener('mouseenter', ()=>{ hoverLabelEl.innerHTML = labelHTMLFor(cardEl); });
+    cardEl.addEventListener('mouseleave', ()=>{ hoverLabelEl.innerHTML = '&nbsp;'; });
   });
 }
+// One-time global touch handling so dragging a finger across your cards updates
+// the hover label live, without re-attaching a document listener on every render.
+let cardHoverTouchId = null;
+function handleCardHoverTouchPoint(x, y){
+  if(!hoverLabelEl) return;
+  const el = document.elementFromPoint(x, y);
+  const cardEl = el && el.closest ? el.closest('.hand-row.my-hand-row .card[data-card]') : null;
+  hoverLabelEl.innerHTML = cardEl ? labelHTMLFor(cardEl) : '&nbsp;';
+}
+document.addEventListener('touchstart', (e)=>{
+  const t = e.touches[0];
+  if(!t) return;
+  const cardEl = t.target && t.target.closest ? t.target.closest('.hand-row.my-hand-row .card[data-card]') : null;
+  if(!cardEl) return;
+  cardHoverTouchId = t.identifier;
+  handleCardHoverTouchPoint(t.clientX, t.clientY);
+}, {passive:true});
+document.addEventListener('touchmove', (e)=>{
+  if(cardHoverTouchId===null) return;
+  const t = Array.from(e.touches).find(tt=>tt.identifier===cardHoverTouchId);
+  if(!t) return;
+  handleCardHoverTouchPoint(t.clientX, t.clientY);
+}, {passive:true});
+document.addEventListener('touchend', ()=>{
+  if(cardHoverTouchId===null) return;
+  cardHoverTouchId = null;
+  if(hoverLabelEl) hoverLabelEl.innerHTML = '&nbsp;';
+}, {passive:true});
 
 function render(){
   app.innerHTML = '';
@@ -1080,7 +1136,8 @@ function computeSeatPositions(n){
   if(n<=0) return [];
   const startDeg = 165, endDeg = 15;
   const degs = n===1 ? [90] : Array.from({length:n},(_,i)=> startDeg - i*((startDeg-endDeg)/(n-1)));
-  const cx=50, cy=56, rx=42, ry=40;
+  const cx=50, cy=38, ry=20;
+  const rx=43;
   return degs.map(deg=>{
     const rad = deg*Math.PI/180;
     return { left: cx + rx*Math.cos(rad), top: cy - ry*Math.sin(rad) };
@@ -1129,18 +1186,18 @@ function renderLocalArena(){
       if(blind){
         infoLine = game.bids[opp.id]===null ? '…' : (game.bids[opp.id]===1?'Prendo':'Non prendo');
       } else {
-        infoLine = game.bids[opp.id]===null ? '…' : `Dich ${game.bids[opp.id]}`;
+        infoLine = game.bids[opp.id]===null ? '…' : `DICHIARATE: <span class="fuchsia">${game.bids[opp.id]}</span>`;
       }
     } else {
       const declared = game.bids[opp.id], taken = game.tricksWon[opp.id];
       const cls = taken===declared ? 'green' : 'red';
-      infoLine = `D ${declared} · P <span class="${cls}">${taken}</span>`;
+      infoLine = `D <span class="${cls}">${declared}</span> · P <span class="${cls}">${taken}</span>`;
     }
     let cardVisual;
     if(blind && phase==='bidding' && game.hands[opp.id]){
       cardVisual = cardHTML(game.hands[opp.id][0], {small:true});
     } else {
-      cardVisual = `${cardBackHTML(true)}<span class="seat-count">×${cardsRemaining}</span>`;
+      cardVisual = `${cardBackHTML('tiny')}<span class="seat-count">×${cardsRemaining}</span>`;
     }
     return `<div class="opponent-seat${isTurn?' thinking':''}" style="left:${pos.left}%; top:${pos.top}%;">
       <div class="seat-cards">${cardVisual}</div>
@@ -1155,6 +1212,13 @@ function renderLocalArena(){
       `).join('')}</div>`
     : `<div class="empty-table-msg">${phase==='bidding' ? '' : 'Nessuna carta ancora giocata in questa presa.'}</div>`;
 
+  let tableBestRank = null;
+  if(game.table && game.table.length){
+    let winner = game.table[0];
+    for(const entry of game.table) if(effectiveRank(entry) > effectiveRank(winner)) winner = entry;
+    tableBestRank = effectiveRank(winner);
+  }
+
   let bottomHTML = '';
   if(phase==='bidding' && me){
     const isMe = currentTurnId===me.id;
@@ -1166,7 +1230,7 @@ function renderLocalArena(){
       handSection = `<p class="center-text" style="opacity:.8;font-size:13px;">La tua carta è nascosta (vedi quelle degli avversari intorno al tavolo).</p>
         <div class="hand-row">${cardBackHTML(false)}</div>`;
     } else {
-      handSection = `<div class="hand-row">${game.hands[me.id].map(c=>cardHTML(c,{small:true})).join('')}</div>
+      handSection = `<div class="hand-row my-hand-row">${game.hands[me.id].map(c=>cardHTML(c,{small:true})).join('')}</div>
         ${cardHoverLabelHTML('cardHoverLabel')}`;
     }
     let actionSection = '';
@@ -1199,18 +1263,18 @@ function renderLocalArena(){
     bottomHTML = `<div class="panel center-text">
       <div class="section-title">${me.name}</div>
       <p style="opacity:.75;font-size:13px;">Dichiarazione: <strong style="color:var(--gold-light)">${game.bids[me.id]}</strong> · Prese finora: <strong style="color:var(--gold-light)">${game.tricksWon[me.id]}</strong></p>
-      <div class="hand-row">${game.hands[me.id].map(c=>cardHTML(c,{clickable:isMe})).join('')}</div>
+      <div class="hand-row my-hand-row">${game.hands[me.id].map(c=>cardHTML(c,{clickable:isMe})).join('')}</div>
       ${cardHoverLabelHTML('cardHoverLabel')}
     </div>`;
   } else if(phase==='trickResult' && me){
     const winnerName = playerById(game.lastTrickWinner).name;
     bottomHTML = `<div class="panel center-text">
       <div class="section-title">${winnerName}${game.lastTrickWinner===me.id?' (tu)':''} si aggiudica la presa!</div>
-      <div class="hand-row">${game.hands[me.id].map(c=>cardHTML(c,{small:true})).join('')}</div>
+      <div class="hand-row my-hand-row">${game.hands[me.id].map(c=>cardHTML(c,{small:true})).join('')}</div>
     </div>`;
   } else if(me){
     bottomHTML = `<div class="panel center-text">
-      <div class="hand-row">${game.hands[me.id].map(c=>cardHTML(c,{small:true})).join('')}</div>
+      <div class="hand-row my-hand-row">${game.hands[me.id].map(c=>cardHTML(c,{small:true})).join('')}</div>
     </div>`;
   }
 
@@ -1225,7 +1289,7 @@ function renderLocalArena(){
     ${bottomHTML}
   </div>`));
 
-  wireCardHover('cardHoverLabel');
+  wireCardHover('cardHoverLabel', tableBestRank);
 
   if(phase==='bidding' && me && currentTurnId===me.id){
     document.querySelectorAll('.bid-btn').forEach(btn=>{
@@ -2393,18 +2457,18 @@ function renderOnlineArena(){
       if(blind){
         infoLine = og.bids[opp.id]===null ? '…' : (og.bids[opp.id]===1?'Prendo':'Non prendo');
       } else {
-        infoLine = og.bids[opp.id]===null ? '…' : `Dich ${og.bids[opp.id]}`;
+        infoLine = og.bids[opp.id]===null ? '…' : `DICHIARATE: <span class="fuchsia">${og.bids[opp.id]}</span>`;
       }
     } else {
       const declared = og.bids[opp.id], taken = og.tricksWon[opp.id];
       const cls = taken===declared ? 'green' : 'red';
-      infoLine = `D ${declared} · P <span class="${cls}">${taken}</span>`;
+      infoLine = `D <span class="${cls}">${declared}</span> · P <span class="${cls}">${taken}</span>`;
     }
     let cardVisual;
     if(blind && phase==='bidding' && og.hands[opp.id]){
       cardVisual = cardHTML(og.hands[opp.id][0], {small:true});
     } else {
-      cardVisual = `${cardBackHTML(true)}<span class="seat-count">×${cardsRemaining}</span>`;
+      cardVisual = `${cardBackHTML('tiny')}<span class="seat-count">×${cardsRemaining}</span>`;
     }
     return `<div class="opponent-seat${isTurn?' thinking':''}" style="left:${pos.left}%; top:${pos.top}%;">
       <div class="seat-cards">${cardVisual}</div>
@@ -2419,6 +2483,13 @@ function renderOnlineArena(){
       `).join('')}</div>`
     : `<div class="empty-table-msg">${phase==='bidding' ? '' : 'Nessuna carta ancora giocata in questa presa.'}</div>`;
 
+  let tableBestRank = null;
+  if(og.table && og.table.length){
+    let winner = og.table[0];
+    for(const entry of og.table) if(rEffectiveRank(entry) > rEffectiveRank(winner)) winner = entry;
+    tableBestRank = rEffectiveRank(winner);
+  }
+
   let bottomHTML = '';
   if(phase==='bidding' && me){
     const isMe = currentTurnId===myId;
@@ -2430,7 +2501,7 @@ function renderOnlineArena(){
       handSection = `<p class="center-text" style="opacity:.8;font-size:13px;">La tua carta è nascosta (vedi quelle degli avversari intorno al tavolo).</p>
         <div class="hand-row">${cardBackHTML(false)}</div>`;
     } else {
-      handSection = `<div class="hand-row">${(og.hands[myId]||[]).map(c=>cardHTML(c,{small:true})).join('')}</div>
+      handSection = `<div class="hand-row my-hand-row">${(og.hands[myId]||[]).map(c=>cardHTML(c,{small:true})).join('')}</div>
         ${cardHoverLabelHTML('cardHoverLabel')}`;
     }
     let actionSection = '';
@@ -2463,7 +2534,7 @@ function renderOnlineArena(){
     bottomHTML = `<div class="panel center-text">
       <p style="opacity:.75;font-size:13px;">La tua dichiarazione: <strong style="color:var(--gold-light)">${og.bids[myId]}</strong> · Le tue prese finora: <strong style="color:var(--gold-light)">${og.tricksWon[myId]||0}</strong></p>
       <p class="center-text" style="opacity:.85;">${isMe ? '🎯 Tocca a te giocare!' : `⏳ In attesa che <strong style="color:var(--gold-light)">${rPlayerById(og,currentTurnId).name}</strong> giochi...`}</p>
-      <div class="hand-row">${(og.hands[myId]||[]).map(c=>cardHTML(c,{clickable:isMe})).join('')}</div>
+      <div class="hand-row my-hand-row">${(og.hands[myId]||[]).map(c=>cardHTML(c,{clickable:isMe})).join('')}</div>
       ${cardHoverLabelHTML('cardHoverLabel')}
     </div>`;
   } else if(phase==='trickResult' && me){
@@ -2489,7 +2560,7 @@ function renderOnlineArena(){
     ${bottomHTML}
   </div>`));
 
-  wireCardHover('cardHoverLabel');
+  wireCardHover('cardHoverLabel', tableBestRank);
 
   if(phase==='bidding' && currentTurnId===myId){
     document.querySelectorAll('.bid-btn').forEach(btn=>{
