@@ -85,13 +85,26 @@
   }
   .panel.hand-panel{
     max-width:660px; flex-shrink:0;
-    border-radius:50% 50% 16px 16px / 30px 30px 16px 16px;
-    padding-top:18px;
-    background: linear-gradient(180deg, rgba(0,0,0,.25), rgba(0,0,0,.1) 15%), var(--wood);
-    position:relative; z-index:5;
-    box-shadow: var(--shadow), inset 0 0 0 2px rgba(201,162,39,.3);
+    margin-top:10px;
+    position:relative;
+    background-color: var(--wood);
+    box-shadow:
+      var(--shadow),
+      inset 0 0 0 2px rgba(201,162,39,.55),
+      inset 0 0 0 5px rgba(11,42,32,.5),
+      inset 0 0 0 6px rgba(201,162,39,.3);
+    background-image:
+      linear-gradient(180deg, rgba(255,255,255,.05), rgba(0,0,0,.15)),
+      url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44' width='44' height='44'><g><path d='M3 32 Q3 3 32 3' fill='none' stroke='%23c9a227' stroke-width='1.8'/><path d='M3 22 Q3 11 14 11' fill='none' stroke='%23c9a227' stroke-width='1.1' opacity='0.75'/><path d='M22 3 Q11 3 11 14' fill='none' stroke='%23c9a227' stroke-width='1.1' opacity='0.75'/><circle cx='32' cy='3' r='2.4' fill='%23c9a227'/><circle cx='3' cy='32' r='2.4' fill='%23c9a227'/><circle cx='3' cy='3' r='2' fill='none' stroke='%23c9a227' stroke-width='1.1'/></g></svg>"),
+      url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44' width='44' height='44'><g transform='scale(-1,1) translate(-44,0)'><path d='M3 32 Q3 3 32 3' fill='none' stroke='%23c9a227' stroke-width='1.8'/><path d='M3 22 Q3 11 14 11' fill='none' stroke='%23c9a227' stroke-width='1.1' opacity='0.75'/><path d='M22 3 Q11 3 11 14' fill='none' stroke='%23c9a227' stroke-width='1.1' opacity='0.75'/><circle cx='32' cy='3' r='2.4' fill='%23c9a227'/><circle cx='3' cy='32' r='2.4' fill='%23c9a227'/><circle cx='3' cy='3' r='2' fill='none' stroke='%23c9a227' stroke-width='1.1'/></g></svg>"),
+      url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44' width='44' height='44'><g transform='scale(1,-1) translate(0,-44)'><path d='M3 32 Q3 3 32 3' fill='none' stroke='%23c9a227' stroke-width='1.8'/><path d='M3 22 Q3 11 14 11' fill='none' stroke='%23c9a227' stroke-width='1.1' opacity='0.75'/><path d='M22 3 Q11 3 11 14' fill='none' stroke='%23c9a227' stroke-width='1.1' opacity='0.75'/><circle cx='32' cy='3' r='2.4' fill='%23c9a227'/><circle cx='3' cy='32' r='2.4' fill='%23c9a227'/><circle cx='3' cy='3' r='2' fill='none' stroke='%23c9a227' stroke-width='1.1'/></g></svg>"),
+      url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44' width='44' height='44'><g transform='scale(-1,-1) translate(-44,-44)'><path d='M3 32 Q3 3 32 3' fill='none' stroke='%23c9a227' stroke-width='1.8'/><path d='M3 22 Q3 11 14 11' fill='none' stroke='%23c9a227' stroke-width='1.1' opacity='0.75'/><path d='M22 3 Q11 3 11 14' fill='none' stroke='%23c9a227' stroke-width='1.1' opacity='0.75'/><circle cx='32' cy='3' r='2.4' fill='%23c9a227'/><circle cx='3' cy='32' r='2.4' fill='%23c9a227'/><circle cx='3' cy='3' r='2' fill='none' stroke='%23c9a227' stroke-width='1.1'/></g></svg>");
+    background-repeat: no-repeat, no-repeat, no-repeat, no-repeat, no-repeat;
+    background-position: 0 0, 6px 6px, top 6px right 6px, bottom 6px left 6px, bottom 6px right 6px;
+    background-size: 100% 100%, 34px 34px, 34px 34px, 34px 34px, 34px 34px;
+    padding:16px 24px;
   }
-  .my-stat-line{ font-size:16px; font-weight:700; margin-bottom:8px; }
+  .my-stat-line{ font-size:16px; font-weight:700; margin-bottom:4px; }
   .my-stat-line .green{ color:#4fd671; font-weight:800; }
   .my-stat-line .red{ color:#e25c5c; font-weight:800; }
   .btn{
@@ -179,7 +192,7 @@
   .card.clickable:hover{ transform:translateY(-8px); box-shadow:0 10px 18px rgba(0,0,0,.5); }
   .card .label{ font-size:9px; font-weight:700; letter-spacing:.03em; text-transform:uppercase; opacity:.75;}
 
-  .hand-row{ display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin:14px 0;}
+  .hand-row{ display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin:8px 0;}
   .hand-row.my-hand-row{
     gap:14px; flex-wrap:nowrap; overflow-x:auto; justify-content:flex-start;
     padding:2px 2px 10px; -webkit-overflow-scrolling:touch;
@@ -206,37 +219,47 @@
     position:fixed; left:0; right:0; bottom:0; z-index:600;
     background:linear-gradient(180deg, rgba(13,50,38,.4), rgba(13,50,38,.98) 35%);
     border-top:2px solid var(--gold);
-    padding:12px 16px calc(12px + env(safe-area-inset-bottom));
+    padding:10px 16px calc(10px + env(safe-area-inset-bottom));
     display:flex; flex-direction:column; align-items:center;
     box-shadow:0 -6px 20px rgba(0,0,0,.4);
   }
-  .fixed-action-bar .section-title{ margin-bottom:8px; }
-  .action-bar-spacer{ height:130px; width:100%; flex-shrink:0; }
+  .fixed-action-bar .section-title{ margin-bottom:6px; }
+  .action-bar-spacer{ height:112px; width:100%; flex-shrink:0; }
   @media (max-width:640px){
-    .fixed-action-bar{ padding:8px 10px calc(8px + env(safe-area-inset-bottom)); }
-    .action-bar-spacer{ height:150px; }
+    .fixed-action-bar{ padding:7px 10px calc(7px + env(safe-area-inset-bottom)); }
+    .action-bar-spacer{ height:128px; }
   }
 
-  .table-arena{ position:relative; width:100%; max-width:720px; flex:1 1 auto; min-height:190px; max-height:360px; margin:14px auto 4px; }
+  .table-arena{ position:relative; width:100%; max-width:720px; flex:0 0 auto; height:400px; margin:14px auto 10px; }
+  .table-spacer{ flex:1 1 auto; min-height:0; width:100%; }
   .table-arena .table-felt{
     position:absolute; inset:0;
     background: radial-gradient(ellipse at 50% 45%, var(--felt-light), var(--felt) 70%);
-    border:5px solid var(--wood); border-radius:50% / 34%;
-    box-shadow:inset 0 0 50px rgba(0,0,0,.5), inset 0 0 0 2px rgba(201,162,39,.65);
+    border:6px solid var(--wood); border-radius:50% / 34%;
+    box-shadow:
+      inset 0 0 50px rgba(0,0,0,.5),
+      inset 0 0 0 2px rgba(201,162,39,.7),
+      inset 0 0 0 4px rgba(11,42,32,.9),
+      0 0 0 1px rgba(201,162,39,.35);
   }
   .table-arena .table-felt::before{
-    content:''; position:absolute; inset:7px;
-    border:1px solid rgba(201,162,39,.55); border-radius:50% / 34%;
+    content:''; position:absolute; inset:9px;
+    border:1px solid rgba(201,162,39,.5); border-radius:50% / 34%;
+    pointer-events:none;
+  }
+  .table-arena .table-felt::after{
+    content:''; position:absolute; inset:13px;
+    border:1px solid rgba(201,162,39,.25); border-radius:50% / 34%;
     pointer-events:none;
   }
   .table-corner{
-    position:absolute; width:26px; height:26px; opacity:.75; pointer-events:none; z-index:1;
+    position:absolute; width:38px; height:38px; opacity:.85; pointer-events:none; z-index:1;
   }
   .table-corner svg{ width:100%; height:100%; }
-  .table-corner.tc-tl{ top:2px; left:6%; transform:rotate(0deg); }
-  .table-corner.tc-tr{ top:2px; right:6%; transform:scaleX(-1); }
-  .table-corner.tc-bl{ bottom:2px; left:6%; transform:scaleY(-1); }
-  .table-corner.tc-br{ bottom:2px; right:6%; transform:scale(-1,-1); }
+  .table-corner.tc-tl{ top:-4px; left:5%; transform:rotate(0deg); }
+  .table-corner.tc-tr{ top:-4px; right:5%; transform:scaleX(-1); }
+  .table-corner.tc-bl{ bottom:-4px; left:5%; transform:scaleY(-1); }
+  .table-corner.tc-br{ bottom:-4px; right:5%; transform:scale(-1,-1); }
   .table-center-cards{
     position:absolute; top:76%; left:50%; transform:translate(-50%,-50%);
     width:min(90%,460px); display:flex; flex-wrap:wrap; justify-content:center; z-index:2;
@@ -248,30 +271,42 @@
     width:calc(112px * var(--seat-scale, 1)); text-align:center; z-index:3;
   }
   .opponent-seat .seat-cards{ display:flex; align-items:center; justify-content:center; gap:4px; }
+  .seat-card-wrap{ position:relative; display:inline-flex; flex-shrink:0; }
+  .seat-card-ratio{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font-family:'Nunito Sans',sans-serif; font-weight:900; font-size:calc(20px * var(--seat-scale, 1));
+    text-shadow: 0 0 4px rgba(0,0,0,.9), 0 0 8px rgba(0,0,0,.9); pointer-events:none;
+    letter-spacing:-.02em; white-space:nowrap;
+  }
+  .seat-card-ratio.green{ color:#5cf08c; }
+  .seat-card-ratio.red{ color:#ff6b6b; }
+  @media (max-width:640px){
+    .seat-card-ratio{ font-size:calc(16.5px * var(--seat-scale, 1)); }
+  }
   .card.back.tiny{
-    width:calc(48px * var(--seat-scale, 1)); height:calc(70px * var(--seat-scale, 1));
-    border-radius:6px; border-width:2px; flex-shrink:0;
+    width:calc(84px * var(--seat-scale, 1)); height:calc(122px * var(--seat-scale, 1));
+    border-radius:8px; border-width:2px; flex-shrink:0;
   }
   .opponent-seat .seat-count{ font-size:calc(16px * var(--seat-scale, 1)); font-weight:800; color:var(--cream); opacity:.95; }
   .opponent-seat .seat-name{
-    font-size:calc(12.5px * var(--seat-scale, 1)); font-weight:700; background:rgba(0,0,0,.4);
-    padding:2px 9px; border-radius:10px;
+    font-size:calc(20.5px * var(--seat-scale, 1)); font-weight:800; background:rgba(0,0,0,.4);
+    padding:3px 10px; border-radius:10px;
     white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:ellipsis; border:1px solid transparent;
   }
   .opponent-seat.thinking .seat-name{
     color:var(--gold-light); border-color:var(--gold); text-shadow:0 0 8px rgba(201,162,39,.6);
   }
-  .opponent-seat .seat-info{ font-size:calc(15px * var(--seat-scale, 1)); font-weight:700; opacity:.95; line-height:1.25; white-space:nowrap; }
+  .opponent-seat .seat-info{ font-size:calc(15px * var(--seat-scale, 1)); font-weight:800; opacity:.95; line-height:1.25; white-space:nowrap; }
   .opponent-seat .seat-info .fuchsia{ color:#e84fd6; font-weight:800; }
   .opponent-seat .seat-info .green{ color:#4fd671; font-weight:800; }
   .opponent-seat .seat-info .red{ color:#e25c5c; font-weight:800; }
   @media (max-width:640px){
-    .table-arena{ flex:1 1 auto; min-height:150px; max-height:300px; margin:12px auto 2px; }
-    .opponent-seat{ width:calc(86px * var(--seat-scale, 1)); }
-    .card.back.tiny{ width:calc(34px * var(--seat-scale, 1)); height:calc(50px * var(--seat-scale, 1)); }
-    .opponent-seat .seat-name{ font-size:calc(10.5px * var(--seat-scale, 1)); padding:1px 6px; }
-    .opponent-seat .seat-info{ font-size:calc(12px * var(--seat-scale, 1)); }
-    .opponent-seat .seat-count{ font-size:calc(13px * var(--seat-scale, 1)); }
+    .table-arena{ flex:0 0 auto; height:330px; margin:12px auto 8px; }
+    .opponent-seat{ width:calc(92px * var(--seat-scale, 1)); }
+    .card.back.tiny{ width:calc(63px * var(--seat-scale, 1)); height:calc(93px * var(--seat-scale, 1)); }
+    .opponent-seat .seat-name{ font-size:calc(18px * var(--seat-scale, 1)); padding:2px 7px; }
+    .opponent-seat .seat-info{ font-size:calc(13.5px * var(--seat-scale, 1)); }
+    .opponent-seat .seat-count{ font-size:calc(14px * var(--seat-scale, 1)); }
   }
 
   .table-row-layout{ display:flex; gap:14px; align-items:flex-start; justify-content:center; flex-wrap:wrap; width:100%; max-width:820px; margin:0 auto; }
@@ -307,9 +342,9 @@
     display:flex; align-items:center; justify-content:center;
   }
   .table-cards{ display:flex; gap:calc(14px * var(--tc-scale, 1)); flex-wrap:wrap; justify-content:center; align-items:center;}
-  .table-cards .card{ width:calc(64px * var(--tc-scale, 1)); height:calc(106px * var(--tc-scale, 1)); }
+  .table-cards .card{ width:calc(95px * var(--tc-scale, 1)); height:calc(157px * var(--tc-scale, 1)); }
   @media (max-width:640px){
-    .table-cards .card{ width:calc(50px * var(--tc-scale, 1)); height:calc(83px * var(--tc-scale, 1)); }
+    .table-cards .card{ width:calc(74px * var(--tc-scale, 1)); height:calc(123px * var(--tc-scale, 1)); }
   }
   .table-card-slot{ display:flex; flex-direction:column; align-items:center; gap:6px; }
   .table-card-name{ font-size:calc(11px * var(--tc-scale, 1)); font-weight:700; color:var(--gold-light); text-align:center; max-width:70px;}
@@ -443,6 +478,7 @@
     #globalToolbar{ top:calc(8px + env(safe-area-inset-top)); }
     .icon-btn{ width:32px; height:32px; font-size:13px; }
     .panel{ padding:16px; }
+    .panel.hand-panel{ padding:12px 16px; }
     .section-title{ font-size:16px; margin-bottom:4px; }
   }
 </style>
@@ -1246,10 +1282,10 @@ function computeSeatPositions(n){
 
 function seatScaleFor(n){
   if(n<=3) return 1;
-  if(n===4) return 0.86;
-  if(n===5) return 0.74;
-  if(n===6) return 0.64;
-  return 0.56; // 7 opponents (8-player game)
+  if(n===4) return 0.92;
+  if(n===5) return 0.84;
+  if(n===6) return 0.76;
+  return 0.70; // 7 opponents (8-player game)
 }
 
 let trickAdvanceScheduled = false;
@@ -1290,6 +1326,7 @@ function renderLocalArena(){
     const isTurn = opp.id===currentTurnId;
     const cardsRemaining = game.hands[opp.id] ? game.hands[opp.id].length : 0;
     let infoLine = '';
+    let cardRatioOverlay = '';
     if(phase==='bidding'){
       if(blind){
         infoLine = game.bids[opp.id]===null ? '…' : (game.bids[opp.id]===1?'Prendo':'Non prendo');
@@ -1299,18 +1336,18 @@ function renderLocalArena(){
     } else {
       const declared = game.bids[opp.id], taken = game.tricksWon[opp.id];
       const cls = taken===declared ? 'green' : 'red';
-      infoLine = `D <span class="${cls}">${declared}</span>/<span class="${cls}">${taken}</span>`;
+      cardRatioOverlay = `<div class="seat-card-ratio ${cls}">${declared}/${taken}</div>`;
     }
     let cardVisual;
     if(blind && phase==='bidding' && game.hands[opp.id]){
       cardVisual = cardHTML(game.hands[opp.id][0], {small:true});
     } else {
-      cardVisual = `${cardBackHTML('tiny')}<span class="seat-count">×${cardsRemaining}</span>`;
+      cardVisual = `<div class="seat-card-wrap">${cardBackHTML('tiny')}${cardRatioOverlay}</div><span class="seat-count">×${cardsRemaining}</span>`;
     }
     return `<div class="opponent-seat${isTurn?' thinking':''}" style="left:${pos.left}%; top:${pos.top}%;">
       <div class="seat-cards">${cardVisual}</div>
       <div class="seat-name">${opp.name}${isTurn?' <span class="thinking-dots">●●●</span>':''}</div>
-      <div class="seat-info">${infoLine} · <span class="sp-score" style="color:#4fd671;">${opp.score}</span>pt</div>
+      ${infoLine ? `<div class="seat-info">${infoLine}</div>` : ''}
     </div>`;
   }).join('');
 
@@ -1397,10 +1434,11 @@ function renderLocalArena(){
     ${infoBarHTML()}
     <div class="table-arena" style="--seat-scale:${seatScaleFor(opponents.length)}; --tc-scale:${seatScaleFor(opponents.length+1)};">
       <div class="table-felt"></div>
-      <div class="table-corner tc-tl"><svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><path d="M2 20 Q2 2 20 2" fill="none" stroke="#c9a227" stroke-width="1.5"/><circle cx="20" cy="2" r="1.8" fill="#c9a227"/><circle cx="2" cy="20" r="1.8" fill="#c9a227"/></svg></div><div class="table-corner tc-tr"><svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><path d="M2 20 Q2 2 20 2" fill="none" stroke="#c9a227" stroke-width="1.5"/><circle cx="20" cy="2" r="1.8" fill="#c9a227"/><circle cx="2" cy="20" r="1.8" fill="#c9a227"/></svg></div><div class="table-corner tc-bl"><svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><path d="M2 20 Q2 2 20 2" fill="none" stroke="#c9a227" stroke-width="1.5"/><circle cx="20" cy="2" r="1.8" fill="#c9a227"/><circle cx="2" cy="20" r="1.8" fill="#c9a227"/></svg></div><div class="table-corner tc-br"><svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><path d="M2 20 Q2 2 20 2" fill="none" stroke="#c9a227" stroke-width="1.5"/><circle cx="20" cy="2" r="1.8" fill="#c9a227"/><circle cx="2" cy="20" r="1.8" fill="#c9a227"/></svg></div>
+      <div class="table-corner tc-tl"><svg viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg"><path d="M3 32 Q3 3 32 3" fill="none" stroke="#c9a227" stroke-width="1.8"/><path d="M3 22 Q3 11 14 11" fill="none" stroke="#c9a227" stroke-width="1.1" opacity="0.75"/><path d="M22 3 Q11 3 11 14" fill="none" stroke="#c9a227" stroke-width="1.1" opacity="0.75"/><circle cx="32" cy="3" r="2.4" fill="#c9a227"/><circle cx="3" cy="32" r="2.4" fill="#c9a227"/><circle cx="3" cy="3" r="2" fill="none" stroke="#c9a227" stroke-width="1.1"/><path d="M14 11 Q9 9 8 4" fill="none" stroke="#c9a227" stroke-width="0.9" opacity="0.6"/><path d="M11 14 Q9 9 4 8" fill="none" stroke="#c9a227" stroke-width="0.9" opacity="0.6"/></svg></div><div class="table-corner tc-tr"><svg viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg"><path d="M3 32 Q3 3 32 3" fill="none" stroke="#c9a227" stroke-width="1.8"/><path d="M3 22 Q3 11 14 11" fill="none" stroke="#c9a227" stroke-width="1.1" opacity="0.75"/><path d="M22 3 Q11 3 11 14" fill="none" stroke="#c9a227" stroke-width="1.1" opacity="0.75"/><circle cx="32" cy="3" r="2.4" fill="#c9a227"/><circle cx="3" cy="32" r="2.4" fill="#c9a227"/><circle cx="3" cy="3" r="2" fill="none" stroke="#c9a227" stroke-width="1.1"/><path d="M14 11 Q9 9 8 4" fill="none" stroke="#c9a227" stroke-width="0.9" opacity="0.6"/><path d="M11 14 Q9 9 4 8" fill="none" stroke="#c9a227" stroke-width="0.9" opacity="0.6"/></svg></div><div class="table-corner tc-bl"><svg viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg"><path d="M3 32 Q3 3 32 3" fill="none" stroke="#c9a227" stroke-width="1.8"/><path d="M3 22 Q3 11 14 11" fill="none" stroke="#c9a227" stroke-width="1.1" opacity="0.75"/><path d="M22 3 Q11 3 11 14" fill="none" stroke="#c9a227" stroke-width="1.1" opacity="0.75"/><circle cx="32" cy="3" r="2.4" fill="#c9a227"/><circle cx="3" cy="32" r="2.4" fill="#c9a227"/><circle cx="3" cy="3" r="2" fill="none" stroke="#c9a227" stroke-width="1.1"/><path d="M14 11 Q9 9 8 4" fill="none" stroke="#c9a227" stroke-width="0.9" opacity="0.6"/><path d="M11 14 Q9 9 4 8" fill="none" stroke="#c9a227" stroke-width="0.9" opacity="0.6"/></svg></div><div class="table-corner tc-br"><svg viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg"><path d="M3 32 Q3 3 32 3" fill="none" stroke="#c9a227" stroke-width="1.8"/><path d="M3 22 Q3 11 14 11" fill="none" stroke="#c9a227" stroke-width="1.1" opacity="0.75"/><path d="M22 3 Q11 3 11 14" fill="none" stroke="#c9a227" stroke-width="1.1" opacity="0.75"/><circle cx="32" cy="3" r="2.4" fill="#c9a227"/><circle cx="3" cy="32" r="2.4" fill="#c9a227"/><circle cx="3" cy="3" r="2" fill="none" stroke="#c9a227" stroke-width="1.1"/><path d="M14 11 Q9 9 8 4" fill="none" stroke="#c9a227" stroke-width="0.9" opacity="0.6"/><path d="M11 14 Q9 9 4 8" fill="none" stroke="#c9a227" stroke-width="0.9" opacity="0.6"/></svg></div>
       ${seatsHTML}
       <div class="table-center-cards">${tableCardsHTML}</div>
     </div>
+    <div class="table-spacer"></div>
     ${bottomHTML}
   </div>`));
 
@@ -2618,6 +2656,7 @@ function renderOnlineArena(){
     const isTurn = opp.id===currentTurnId;
     const cardsRemaining = og.hands[opp.id] ? og.hands[opp.id].length : 0;
     let infoLine = '';
+    let cardRatioOverlay = '';
     if(phase==='bidding'){
       if(blind){
         infoLine = og.bids[opp.id]===null ? '…' : (og.bids[opp.id]===1?'Prendo':'Non prendo');
@@ -2627,18 +2666,18 @@ function renderOnlineArena(){
     } else {
       const declared = og.bids[opp.id], taken = og.tricksWon[opp.id];
       const cls = taken===declared ? 'green' : 'red';
-      infoLine = `D <span class="${cls}">${declared}</span>/<span class="${cls}">${taken}</span>`;
+      cardRatioOverlay = `<div class="seat-card-ratio ${cls}">${declared}/${taken}</div>`;
     }
     let cardVisual;
     if(blind && phase==='bidding' && og.hands[opp.id]){
       cardVisual = cardHTML(og.hands[opp.id][0], {small:true});
     } else {
-      cardVisual = `${cardBackHTML('tiny')}<span class="seat-count">×${cardsRemaining}</span>`;
+      cardVisual = `<div class="seat-card-wrap">${cardBackHTML('tiny')}${cardRatioOverlay}</div><span class="seat-count">×${cardsRemaining}</span>`;
     }
     return `<div class="opponent-seat${isTurn?' thinking':''}" style="left:${pos.left}%; top:${pos.top}%;">
       <div class="seat-cards">${cardVisual}</div>
       <div class="seat-name">${opp.name}${isTurn?' <span class="thinking-dots">●●●</span>':''}</div>
-      <div class="seat-info">${infoLine} · <span class="sp-score" style="color:#4fd671;">${opp.score}</span>pt</div>
+      ${infoLine ? `<div class="seat-info">${infoLine}</div>` : ''}
     </div>`;
   }).join('');
 
@@ -2725,10 +2764,11 @@ function renderOnlineArena(){
     ${onlineInfoBar()}
     <div class="table-arena" style="--seat-scale:${seatScaleFor(opponents.length)}; --tc-scale:${seatScaleFor(opponents.length+1)};">
       <div class="table-felt"></div>
-      <div class="table-corner tc-tl"><svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><path d="M2 20 Q2 2 20 2" fill="none" stroke="#c9a227" stroke-width="1.5"/><circle cx="20" cy="2" r="1.8" fill="#c9a227"/><circle cx="2" cy="20" r="1.8" fill="#c9a227"/></svg></div><div class="table-corner tc-tr"><svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><path d="M2 20 Q2 2 20 2" fill="none" stroke="#c9a227" stroke-width="1.5"/><circle cx="20" cy="2" r="1.8" fill="#c9a227"/><circle cx="2" cy="20" r="1.8" fill="#c9a227"/></svg></div><div class="table-corner tc-bl"><svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><path d="M2 20 Q2 2 20 2" fill="none" stroke="#c9a227" stroke-width="1.5"/><circle cx="20" cy="2" r="1.8" fill="#c9a227"/><circle cx="2" cy="20" r="1.8" fill="#c9a227"/></svg></div><div class="table-corner tc-br"><svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><path d="M2 20 Q2 2 20 2" fill="none" stroke="#c9a227" stroke-width="1.5"/><circle cx="20" cy="2" r="1.8" fill="#c9a227"/><circle cx="2" cy="20" r="1.8" fill="#c9a227"/></svg></div>
+      <div class="table-corner tc-tl"><svg viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg"><path d="M3 32 Q3 3 32 3" fill="none" stroke="#c9a227" stroke-width="1.8"/><path d="M3 22 Q3 11 14 11" fill="none" stroke="#c9a227" stroke-width="1.1" opacity="0.75"/><path d="M22 3 Q11 3 11 14" fill="none" stroke="#c9a227" stroke-width="1.1" opacity="0.75"/><circle cx="32" cy="3" r="2.4" fill="#c9a227"/><circle cx="3" cy="32" r="2.4" fill="#c9a227"/><circle cx="3" cy="3" r="2" fill="none" stroke="#c9a227" stroke-width="1.1"/><path d="M14 11 Q9 9 8 4" fill="none" stroke="#c9a227" stroke-width="0.9" opacity="0.6"/><path d="M11 14 Q9 9 4 8" fill="none" stroke="#c9a227" stroke-width="0.9" opacity="0.6"/></svg></div><div class="table-corner tc-tr"><svg viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg"><path d="M3 32 Q3 3 32 3" fill="none" stroke="#c9a227" stroke-width="1.8"/><path d="M3 22 Q3 11 14 11" fill="none" stroke="#c9a227" stroke-width="1.1" opacity="0.75"/><path d="M22 3 Q11 3 11 14" fill="none" stroke="#c9a227" stroke-width="1.1" opacity="0.75"/><circle cx="32" cy="3" r="2.4" fill="#c9a227"/><circle cx="3" cy="32" r="2.4" fill="#c9a227"/><circle cx="3" cy="3" r="2" fill="none" stroke="#c9a227" stroke-width="1.1"/><path d="M14 11 Q9 9 8 4" fill="none" stroke="#c9a227" stroke-width="0.9" opacity="0.6"/><path d="M11 14 Q9 9 4 8" fill="none" stroke="#c9a227" stroke-width="0.9" opacity="0.6"/></svg></div><div class="table-corner tc-bl"><svg viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg"><path d="M3 32 Q3 3 32 3" fill="none" stroke="#c9a227" stroke-width="1.8"/><path d="M3 22 Q3 11 14 11" fill="none" stroke="#c9a227" stroke-width="1.1" opacity="0.75"/><path d="M22 3 Q11 3 11 14" fill="none" stroke="#c9a227" stroke-width="1.1" opacity="0.75"/><circle cx="32" cy="3" r="2.4" fill="#c9a227"/><circle cx="3" cy="32" r="2.4" fill="#c9a227"/><circle cx="3" cy="3" r="2" fill="none" stroke="#c9a227" stroke-width="1.1"/><path d="M14 11 Q9 9 8 4" fill="none" stroke="#c9a227" stroke-width="0.9" opacity="0.6"/><path d="M11 14 Q9 9 4 8" fill="none" stroke="#c9a227" stroke-width="0.9" opacity="0.6"/></svg></div><div class="table-corner tc-br"><svg viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg"><path d="M3 32 Q3 3 32 3" fill="none" stroke="#c9a227" stroke-width="1.8"/><path d="M3 22 Q3 11 14 11" fill="none" stroke="#c9a227" stroke-width="1.1" opacity="0.75"/><path d="M22 3 Q11 3 11 14" fill="none" stroke="#c9a227" stroke-width="1.1" opacity="0.75"/><circle cx="32" cy="3" r="2.4" fill="#c9a227"/><circle cx="3" cy="32" r="2.4" fill="#c9a227"/><circle cx="3" cy="3" r="2" fill="none" stroke="#c9a227" stroke-width="1.1"/><path d="M14 11 Q9 9 8 4" fill="none" stroke="#c9a227" stroke-width="0.9" opacity="0.6"/><path d="M11 14 Q9 9 4 8" fill="none" stroke="#c9a227" stroke-width="0.9" opacity="0.6"/></svg></div>
       ${seatsHTML}
       <div class="table-center-cards">${tableCardsHTML}</div>
     </div>
+    <div class="table-spacer"></div>
     ${bottomHTML}
   </div>`));
 
