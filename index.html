@@ -42,14 +42,17 @@
       radial-gradient(ellipse at 50% 0%, var(--felt-light) 0%, var(--felt) 45%, var(--felt-dark) 100%);
     font-family:'Nunito Sans', sans-serif;
     color:var(--cream);
-    overflow-x:hidden;
+    overflow:hidden;
   }
   #app{
-    min-height:100vh;
-    min-height:100dvh;
+    height:100vh;
+    height:100dvh;
     display:flex; flex-direction:column;
     align-items:center;
-    padding:22px 14px 40px;
+    padding:14px 14px 4px;
+    overflow-y:auto;
+    overflow-x:hidden;
+    box-sizing:border-box;
   }
   h1.title{
     font-family:'Cinzel', serif;
@@ -60,6 +63,7 @@
     text-shadow: 0 2px 0 rgba(0,0,0,.5), 0 0 30px rgba(201,162,39,.25);
     margin:6px 0 2px;
     text-align:center;
+    flex-shrink:0;
   }
   .subtitle{
     font-style:italic;
@@ -79,6 +83,17 @@
     width:100%;
     max-width:520px;
   }
+  .panel.hand-panel{
+    max-width:660px; flex-shrink:0;
+    border-radius:50% 50% 16px 16px / 30px 30px 16px 16px;
+    padding-top:18px;
+    background: linear-gradient(180deg, rgba(0,0,0,.25), rgba(0,0,0,.1) 15%), var(--wood);
+    position:relative; z-index:5;
+    box-shadow: var(--shadow), inset 0 0 0 2px rgba(201,162,39,.3);
+  }
+  .my-stat-line{ font-size:16px; font-weight:700; margin-bottom:8px; }
+  .my-stat-line .green{ color:#4fd671; font-weight:800; }
+  .my-stat-line .red{ color:#e25c5c; font-weight:800; }
   .btn{
     font-family:'Nunito Sans',sans-serif;
     font-weight:800;
@@ -151,21 +166,24 @@
   .card.jolly{ background:linear-gradient(160deg,#2a2a2a,#111); border-color:var(--gold);}
   .card.jolly .corner, .card.jolly .label{ color:var(--gold-light); }
   .card.back{
-    background:
-      repeating-linear-gradient(45deg, var(--felt-dark), var(--felt-dark) 6px, var(--felt) 6px, var(--felt) 12px);
+    background-color: var(--felt-dark);
+    background-image: url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzYiIGhlaWdodD0iMzYiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIzNiIgaGVpZ2h0PSIzNiIgZmlsbD0iIzBkMzIyNiIvPgo8cGF0aCBkPSJNMTggMyBMMjIgMTQgTDMzIDE4IEwyMiAyMiBMMTggMzMgTDE0IDIyIEwzIDE4IEwxNCAxNCBaIiBmaWxsPSJub25lIiBzdHJva2U9IiNjOWEyMjciIHN0cm9rZS13aWR0aD0iMSIgb3BhY2l0eT0iMC41NSIvPgo8Y2lyY2xlIGN4PSIxOCIgY3k9IjE4IiByPSIyLjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2M5YTIyNyIgc3Ryb2tlLXdpZHRoPSIwLjgiIG9wYWNpdHk9IjAuNTUiLz4KPC9zdmc+');
+    background-size: 18px 18px;
     border:2px solid var(--gold);
+    box-shadow: inset 0 0 0 3px rgba(201,162,39,.35);
   }
   .card.back::after{
-    content:'DN'; font-family:'Cinzel',serif; font-weight:800; color:var(--gold-light);
-    font-size:16px; opacity:.85;
+    content:''; display:none;
   }
-  .card.back.tiny::after{ content:''; }
   .card.clickable{ cursor:pointer; transition:transform .12s ease, box-shadow .12s ease;}
   .card.clickable:hover{ transform:translateY(-8px); box-shadow:0 10px 18px rgba(0,0,0,.5); }
   .card .label{ font-size:9px; font-weight:700; letter-spacing:.03em; text-transform:uppercase; opacity:.75;}
 
   .hand-row{ display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin:14px 0;}
-  .hand-row.my-hand-row{ gap:14px; }
+  .hand-row.my-hand-row{
+    gap:14px; flex-wrap:nowrap; overflow-x:auto; justify-content:flex-start;
+    padding:2px 2px 10px; -webkit-overflow-scrolling:touch;
+  }
   .hand-row.my-hand-row .card{ width:108px; height:180px; border-radius:12px; }
   .hand-row.my-hand-row .card .corner{ font-size:19px; }
   .hand-row.my-hand-row .card .icon{ width:46px; height:46px; }
@@ -184,44 +202,76 @@
   .thinking-dots{ animation: thinkingPulse 1.2s ease-in-out infinite; }
   @keyframes thinkingPulse{ 0%,100%{opacity:.3;} 50%{opacity:1;} }
 
-  .table-arena{ position:relative; width:100%; max-width:720px; height:360px; margin:30px auto 4px; }
+  .fixed-action-bar{
+    position:fixed; left:0; right:0; bottom:0; z-index:600;
+    background:linear-gradient(180deg, rgba(13,50,38,.4), rgba(13,50,38,.98) 35%);
+    border-top:2px solid var(--gold);
+    padding:12px 16px calc(12px + env(safe-area-inset-bottom));
+    display:flex; flex-direction:column; align-items:center;
+    box-shadow:0 -6px 20px rgba(0,0,0,.4);
+  }
+  .fixed-action-bar .section-title{ margin-bottom:8px; }
+  .action-bar-spacer{ height:130px; width:100%; flex-shrink:0; }
+  @media (max-width:640px){
+    .fixed-action-bar{ padding:8px 10px calc(8px + env(safe-area-inset-bottom)); }
+    .action-bar-spacer{ height:150px; }
+  }
+
+  .table-arena{ position:relative; width:100%; max-width:720px; flex:1 1 auto; min-height:190px; max-height:360px; margin:14px auto 4px; }
   .table-arena .table-felt{
     position:absolute; inset:0;
     background: radial-gradient(ellipse at 50% 45%, var(--felt-light), var(--felt) 70%);
     border:5px solid var(--wood); border-radius:50% / 34%;
-    box-shadow:inset 0 0 50px rgba(0,0,0,.5);
+    box-shadow:inset 0 0 50px rgba(0,0,0,.5), inset 0 0 0 2px rgba(201,162,39,.65);
   }
+  .table-arena .table-felt::before{
+    content:''; position:absolute; inset:7px;
+    border:1px solid rgba(201,162,39,.55); border-radius:50% / 34%;
+    pointer-events:none;
+  }
+  .table-corner{
+    position:absolute; width:26px; height:26px; opacity:.75; pointer-events:none; z-index:1;
+  }
+  .table-corner svg{ width:100%; height:100%; }
+  .table-corner.tc-tl{ top:2px; left:6%; transform:rotate(0deg); }
+  .table-corner.tc-tr{ top:2px; right:6%; transform:scaleX(-1); }
+  .table-corner.tc-bl{ bottom:2px; left:6%; transform:scaleY(-1); }
+  .table-corner.tc-br{ bottom:2px; right:6%; transform:scale(-1,-1); }
   .table-center-cards{
-    position:absolute; top:68%; left:50%; transform:translate(-50%,-50%);
-    width:min(88%,420px); display:flex; justify-content:center; z-index:2;
+    position:absolute; top:76%; left:50%; transform:translate(-50%,-50%);
+    width:min(90%,460px); display:flex; flex-wrap:wrap; justify-content:center; z-index:2;
   }
   .table-center-cards .empty-table-msg{ font-size:12.5px; }
   .opponent-seat{
     position:absolute; transform:translate(-50%,-50%);
     display:flex; flex-direction:column; align-items:center; gap:3px;
-    width:112px; text-align:center; z-index:3;
+    width:calc(112px * var(--seat-scale, 1)); text-align:center; z-index:3;
   }
   .opponent-seat .seat-cards{ display:flex; align-items:center; justify-content:center; gap:4px; }
-  .card.back.tiny{ width:48px; height:70px; border-radius:6px; border-width:2px; flex-shrink:0; }
-  .opponent-seat .seat-count{ font-size:16px; font-weight:800; color:var(--cream); opacity:.95; }
+  .card.back.tiny{
+    width:calc(48px * var(--seat-scale, 1)); height:calc(70px * var(--seat-scale, 1));
+    border-radius:6px; border-width:2px; flex-shrink:0;
+  }
+  .opponent-seat .seat-count{ font-size:calc(16px * var(--seat-scale, 1)); font-weight:800; color:var(--cream); opacity:.95; }
   .opponent-seat .seat-name{
-    font-size:12.5px; font-weight:700; background:rgba(0,0,0,.4); padding:2px 9px; border-radius:10px;
+    font-size:calc(12.5px * var(--seat-scale, 1)); font-weight:700; background:rgba(0,0,0,.4);
+    padding:2px 9px; border-radius:10px;
     white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:ellipsis; border:1px solid transparent;
   }
   .opponent-seat.thinking .seat-name{
     color:var(--gold-light); border-color:var(--gold); text-shadow:0 0 8px rgba(201,162,39,.6);
   }
-  .opponent-seat .seat-info{ font-size:15px; font-weight:700; opacity:.95; line-height:1.25; }
+  .opponent-seat .seat-info{ font-size:calc(15px * var(--seat-scale, 1)); font-weight:700; opacity:.95; line-height:1.25; white-space:nowrap; }
   .opponent-seat .seat-info .fuchsia{ color:#e84fd6; font-weight:800; }
   .opponent-seat .seat-info .green{ color:#4fd671; font-weight:800; }
   .opponent-seat .seat-info .red{ color:#e25c5c; font-weight:800; }
   @media (max-width:640px){
-    .table-arena{ height:300px; margin:26px auto 2px; }
-    .opponent-seat{ width:86px; }
-    .card.back.tiny{ width:34px; height:50px; }
-    .opponent-seat .seat-name{ font-size:10.5px; padding:1px 6px; }
-    .opponent-seat .seat-info{ font-size:12px; }
-    .opponent-seat .seat-count{ font-size:13px; }
+    .table-arena{ flex:1 1 auto; min-height:150px; max-height:300px; margin:12px auto 2px; }
+    .opponent-seat{ width:calc(86px * var(--seat-scale, 1)); }
+    .card.back.tiny{ width:calc(34px * var(--seat-scale, 1)); height:calc(50px * var(--seat-scale, 1)); }
+    .opponent-seat .seat-name{ font-size:calc(10.5px * var(--seat-scale, 1)); padding:1px 6px; }
+    .opponent-seat .seat-info{ font-size:calc(12px * var(--seat-scale, 1)); }
+    .opponent-seat .seat-count{ font-size:calc(13px * var(--seat-scale, 1)); }
   }
 
   .table-row-layout{ display:flex; gap:14px; align-items:flex-start; justify-content:center; flex-wrap:wrap; width:100%; max-width:820px; margin:0 auto; }
@@ -256,19 +306,26 @@
     min-height:180px;
     display:flex; align-items:center; justify-content:center;
   }
-  .table-cards{ display:flex; gap:14px; flex-wrap:wrap; justify-content:center; align-items:center;}
+  .table-cards{ display:flex; gap:calc(14px * var(--tc-scale, 1)); flex-wrap:wrap; justify-content:center; align-items:center;}
+  .table-cards .card{ width:calc(64px * var(--tc-scale, 1)); height:calc(106px * var(--tc-scale, 1)); }
+  @media (max-width:640px){
+    .table-cards .card{ width:calc(50px * var(--tc-scale, 1)); height:calc(83px * var(--tc-scale, 1)); }
+  }
   .table-card-slot{ display:flex; flex-direction:column; align-items:center; gap:6px; }
-  .table-card-name{ font-size:11px; font-weight:700; color:var(--gold-light); text-align:center; max-width:70px;}
+  .table-card-name{ font-size:calc(11px * var(--tc-scale, 1)); font-weight:700; color:var(--gold-light); text-align:center; max-width:70px;}
   .empty-table-msg{ font-style:italic; opacity:.6; font-size:14px; }
 
   .info-bar{
     display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin-bottom:10px; width:100%; max-width:640px;
+    flex-shrink:0;
   }
   .chip{
-    background:rgba(0,0,0,.3); border:1px solid var(--gold); border-radius:20px; padding:6px 14px;
-    font-size:12.5px; font-weight:700; letter-spacing:.02em;
+    background:rgba(0,0,0,.3); border:1px solid var(--gold); border-radius:14px; padding:6px 16px 8px;
+    font-weight:700; letter-spacing:.02em;
+    display:flex; flex-direction:column; align-items:center; gap:1px; min-width:64px;
   }
-  .chip .v{ color:var(--gold-light); }
+  .chip .chip-label{ font-size:11px; letter-spacing:.06em; text-transform:uppercase; opacity:.85; }
+  .chip .v{ color:var(--gold-light); font-size:17px; font-weight:800; }
 
   /* Scoreboard */
   table.scoreboard{ width:100%; border-collapse:collapse; margin-top:10px; font-size:14px;}
@@ -309,6 +366,30 @@
   @media (max-width:420px){
     #rulesPanel{ width:calc(100vw - 20px); right:10px; }
   }
+  #scorePanel{
+    position:fixed; top:calc(54px + env(safe-area-inset-top)); right:calc(10px + env(safe-area-inset-right));
+    width:230px; max-height:70vh; overflow-y:auto;
+    background:rgba(11,42,32,.97); border:1px solid var(--gold); padding:20px 16px;
+    clip-path: polygon(14px 0, calc(100% - 14px) 0, 100% 14px, 100% calc(100% - 14px), calc(100% - 14px) 100%, 14px 100%, 0 calc(100% - 14px), 0 14px);
+    z-index:999; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); box-shadow:0 8px 24px rgba(0,0,0,.4);
+  }
+  #scorePanel .sc-title{
+    font-family:'Cinzel',serif; color:var(--gold-light); font-size:14px; font-weight:700; margin-bottom:10px;
+    text-align:center; letter-spacing:.08em; text-transform:uppercase;
+  }
+  #scorePanel .sc-row{ display:flex; justify-content:space-between; align-items:center; padding:6px 2px; border-bottom:1px solid rgba(255,255,255,.1); font-size:14px; }
+  #scorePanel .sc-row:last-of-type{ border-bottom:none; }
+  #scorePanel .sc-row.sc-eliminated{ opacity:.4; text-decoration:line-through; }
+  #scorePanel .sc-name{ font-weight:700; }
+  #scorePanel .sc-pt{ color:#4fd671; font-weight:800; }
+  #scorePanel .sc-divider{ border:none; border-top:1px dashed var(--gold); opacity:.5; margin:10px 0; }
+  #scorePanel .sc-deck{ display:flex; flex-direction:column; align-items:center; gap:6px; }
+  #scorePanel .sc-deck-label{ font-family:'Cinzel',serif; color:var(--gold-light); font-size:12px; letter-spacing:.06em; text-transform:uppercase; }
+  #scorePanel .sc-deck-row{ display:flex; align-items:center; gap:8px; }
+  #scorePanel .sc-deck-count{ font-weight:800; font-size:15px; }
+  @media (max-width:420px){
+    #scorePanel{ width:calc(100vw - 20px); right:10px; }
+  }
   .score-pip{
     display:inline-block; min-width:26px; padding:2px 6px; border-radius:12px; font-weight:800;
     background:rgba(255,255,255,.08);
@@ -325,7 +406,7 @@
 
   .modal-overlay{
     position:fixed; inset:0; background:rgba(0,0,0,.65); display:flex; align-items:center; justify-content:center;
-    padding:16px; z-index:50;
+    padding:16px; z-index:800;
   }
   .joker-choice{ display:flex; gap:16px; justify-content:center; margin-top:16px;}
 
@@ -345,13 +426,20 @@
   .section-title{ font-family:'Cinzel',serif; color:var(--gold-light); font-size:18px; text-align:center; margin-bottom:6px; letter-spacing:.04em;}
   .center-text{ text-align:center; }
   .hidden{ display:none !important; }
-  .flourish{ text-align:center; color:var(--gold); opacity:.5; letter-spacing:.5em; font-size:12px; margin:4px 0 16px;}
+  .flourish{
+    display:flex; align-items:center; justify-content:center; gap:10px;
+    width:100%; max-width:420px; margin:2px auto 14px; flex-shrink:0;
+  }
+  .flourish .fl-line{ flex:1; height:1px; background:linear-gradient(90deg, transparent, var(--gold), transparent); opacity:.7; }
+  .flourish .fl-mark{ color:var(--gold); font-size:13px; opacity:.85; }
   @media (max-width:640px){
     #app{ padding:16px 10px 24px; }
     h1.title{ margin:4px 0 0; font-size:clamp(24px,7vw,34px); }
     .flourish{ margin:2px 0 8px; }
     .info-bar{ margin-bottom:6px; gap:6px; }
-    .chip{ padding:4px 10px; font-size:11px; }
+    .chip{ padding:4px 10px 6px; min-width:52px; }
+    .chip .chip-label{ font-size:9px; }
+    .chip .v{ font-size:14px; }
     #globalToolbar{ top:calc(8px + env(safe-area-inset-top)); }
     .icon-btn{ width:32px; height:32px; font-size:13px; }
     .panel{ padding:16px; }
@@ -362,10 +450,12 @@
 <body>
 <div id="globalToolbar">
   <button id="playersToggleBtn" class="icon-btn" title="Giocatori" style="display:none;">👥</button>
+  <button id="scoreToggleBtn" class="icon-btn" title="Punteggio" style="display:none;">🏆</button>
   <button id="rulesToggleBtn" class="icon-btn" title="Regole">📖</button>
   <button id="homeIconBtn" class="icon-btn" title="Schermata iniziale">🏠</button>
   <button id="quitIconBtn" class="icon-btn" title="Esci dal gioco">✕</button>
 </div>
+<div id="scorePanel" style="display:none;"></div>
 <div id="playersPanel" style="display:none;"></div>
 <div id="rulesPanel" style="display:none;"></div>
 <div id="app"></div>
@@ -1015,6 +1105,12 @@ function cardBackHTML(size){
   return `<div class="card back ${cls}"></div>`;
 }
 
+function myStatLineHTML(declared, taken, score){
+  const declaredDisplay = declared===null || declared===undefined ? '…' : declared;
+  const cls = (declared===null || declared===undefined) ? '' : (taken===declared ? 'green' : 'red');
+  return `<div class="my-stat-line">D <span class="${cls}">${declaredDisplay}</span>/<span class="${cls}">${taken}</span> · <span class="sp-score" style="color:#4fd671;">${score}</span>pt</div>`;
+}
+
 // ---- Live side panel: score / declared / taken-this-round, per player ----
 function playersSidePanelHTML(playersData, currentTurnId){
   const rows = playersData.map(p=>{
@@ -1099,6 +1195,7 @@ document.addEventListener('touchend', ()=>{
 
 function render(){
   app.innerHTML = '';
+  renderScorePanel();
   if(game && game.phase!=='jokerChoice' && game.phase!=='blindJokerChoice'){
     const stuckOverlay = document.getElementById('jokerOverlay');
     if(stuckOverlay) stuckOverlay.remove();
@@ -1134,14 +1231,25 @@ function render(){
 // ---- Seat layout: distribute opponents across the top arc of an oval table ----
 function computeSeatPositions(n){
   if(n<=0) return [];
-  const startDeg = 165, endDeg = 15;
+  // widen the arc as more players join, to use the full table width
+  const spread = Math.min(1, (n-1)/6); // 0 at n=1, 1 at n=7
+  const startDeg = 165 + spread*10;  // up to 175
+  const endDeg = 15 - spread*10;     // down to 5
   const degs = n===1 ? [90] : Array.from({length:n},(_,i)=> startDeg - i*((startDeg-endDeg)/(n-1)));
-  const cx=50, cy=38, ry=20;
-  const rx=43;
+  const cx=50, cy=32, ry=15;
+  const rx=45;
   return degs.map(deg=>{
     const rad = deg*Math.PI/180;
     return { left: cx + rx*Math.cos(rad), top: cy - ry*Math.sin(rad) };
   });
+}
+
+function seatScaleFor(n){
+  if(n<=3) return 1;
+  if(n===4) return 0.86;
+  if(n===5) return 0.74;
+  if(n===6) return 0.64;
+  return 0.56; // 7 opponents (8-player game)
 }
 
 let trickAdvanceScheduled = false;
@@ -1191,7 +1299,7 @@ function renderLocalArena(){
     } else {
       const declared = game.bids[opp.id], taken = game.tricksWon[opp.id];
       const cls = taken===declared ? 'green' : 'red';
-      infoLine = `D <span class="${cls}">${declared}</span> · P <span class="${cls}">${taken}</span>`;
+      infoLine = `D <span class="${cls}">${declared}</span>/<span class="${cls}">${taken}</span>`;
     }
     let cardVisual;
     if(blind && phase==='bidding' && game.hands[opp.id]){
@@ -1234,6 +1342,7 @@ function renderLocalArena(){
         ${cardHoverLabelHTML('cardHoverLabel')}`;
     }
     let actionSection = '';
+    let fixedBarHTML = '';
     if(isMe){
       let bidButtons;
       if(blind){
@@ -1249,31 +1358,36 @@ function renderLocalArena(){
           return `<button class="bid-btn" data-val="${v}" ${disabled?'disabled':''}>${v}</button>`;
         }).join('');
       }
-      actionSection = `<div class="section-title" style="margin-top:10px;">🎯 ${me.name}, quante prese farai?</div><div class="bid-picker">${bidButtons}</div>`;
+      actionSection = `<div class="action-bar-spacer"></div>`;
+      fixedBarHTML = `<div class="fixed-action-bar">
+        <div class="section-title">🎯 ${me.name}, quante prese farai?</div>
+        <div class="bid-picker">${bidButtons}</div>
+      </div>`;
     } else {
       actionSection = `<p class="center-text" style="opacity:.75;margin-top:10px;font-size:13px;">Il tuo turno arriverà a breve...</p>`;
     }
-    bottomHTML = `<div class="panel center-text">
+    bottomHTML = `<div class="panel center-text hand-panel">
+      ${myStatLineHTML(game.bids[me.id], game.tricksWon[me.id], me.score)}
       <div class="section-title">Le tue carte</div>
       ${handSection}
       ${actionSection}
-    </div>`;
+    </div>${fixedBarHTML}`;
   } else if((phase==='playing' || phase==='jokerChoice') && me){
     const isMe = currentTurnId===me.id && phase==='playing';
-    bottomHTML = `<div class="panel center-text">
+    bottomHTML = `<div class="panel center-text hand-panel">
       <div class="section-title">${me.name}</div>
-      <p style="opacity:.75;font-size:13px;">Dichiarazione: <strong style="color:var(--gold-light)">${game.bids[me.id]}</strong> · Prese finora: <strong style="color:var(--gold-light)">${game.tricksWon[me.id]}</strong></p>
+      ${myStatLineHTML(game.bids[me.id], game.tricksWon[me.id], me.score)}
       <div class="hand-row my-hand-row">${game.hands[me.id].map(c=>cardHTML(c,{clickable:isMe})).join('')}</div>
       ${cardHoverLabelHTML('cardHoverLabel')}
     </div>`;
   } else if(phase==='trickResult' && me){
     const winnerName = playerById(game.lastTrickWinner).name;
-    bottomHTML = `<div class="panel center-text">
+    bottomHTML = `<div class="panel center-text hand-panel">
       <div class="section-title">${winnerName}${game.lastTrickWinner===me.id?' (tu)':''} si aggiudica la presa!</div>
       <div class="hand-row my-hand-row">${game.hands[me.id].map(c=>cardHTML(c,{small:true})).join('')}</div>
     </div>`;
   } else if(me){
-    bottomHTML = `<div class="panel center-text">
+    bottomHTML = `<div class="panel center-text hand-panel">
       <div class="hand-row my-hand-row">${game.hands[me.id].map(c=>cardHTML(c,{small:true})).join('')}</div>
     </div>`;
   }
@@ -1281,8 +1395,9 @@ function renderLocalArena(){
   app.appendChild(el(`<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
     ${header()}
     ${infoBarHTML()}
-    <div class="table-arena">
+    <div class="table-arena" style="--seat-scale:${seatScaleFor(opponents.length)}; --tc-scale:${seatScaleFor(opponents.length+1)};">
       <div class="table-felt"></div>
+      <div class="table-corner tc-tl"><svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><path d="M2 20 Q2 2 20 2" fill="none" stroke="#c9a227" stroke-width="1.5"/><circle cx="20" cy="2" r="1.8" fill="#c9a227"/><circle cx="2" cy="20" r="1.8" fill="#c9a227"/></svg></div><div class="table-corner tc-tr"><svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><path d="M2 20 Q2 2 20 2" fill="none" stroke="#c9a227" stroke-width="1.5"/><circle cx="20" cy="2" r="1.8" fill="#c9a227"/><circle cx="2" cy="20" r="1.8" fill="#c9a227"/></svg></div><div class="table-corner tc-bl"><svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><path d="M2 20 Q2 2 20 2" fill="none" stroke="#c9a227" stroke-width="1.5"/><circle cx="20" cy="2" r="1.8" fill="#c9a227"/><circle cx="2" cy="20" r="1.8" fill="#c9a227"/></svg></div><div class="table-corner tc-br"><svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><path d="M2 20 Q2 2 20 2" fill="none" stroke="#c9a227" stroke-width="1.5"/><circle cx="20" cy="2" r="1.8" fill="#c9a227"/><circle cx="2" cy="20" r="1.8" fill="#c9a227"/></svg></div>
       ${seatsHTML}
       <div class="table-center-cards">${tableCardsHTML}</div>
     </div>
@@ -1321,7 +1436,7 @@ function renderLocalArena(){
 
 function header(){
   return `<h1 class="title">Dal Negro</h1>
-  <div class="flourish">•·⚜·•</div>`;
+  <div class="flourish"><span class="fl-line"></span><span class="fl-mark">⚜</span><span class="fl-line"></span></div>`;
 }
 
 function scoreboardHTML(highlightId){
@@ -1337,9 +1452,9 @@ function scoreboardHTML(highlightId){
 
 function infoBarHTML(){
   return `<div class="info-bar">
-    <div class="chip">Round <span class="v">${game.roundNumber}</span></div>
-    <div class="chip">Carte <span class="v">${game.roundCardCount}</span></div>
-    <div class="chip">Presa <span class="v">${game.trickIndex+1}/${game.roundCardCount}</span></div>
+    <div class="chip"><span class="chip-label">Round</span><span class="v">${game.roundNumber}</span></div>
+    <div class="chip"><span class="chip-label">Carte</span><span class="v">${game.roundCardCount}</span></div>
+    <div class="chip"><span class="chip-label">Presa</span><span class="v">${game.trickIndex+1}/${game.roundCardCount}</span></div>
   </div>`;
 }
 
@@ -1780,6 +1895,11 @@ function showHome(){
   stopPolling();
   stopHeartbeat();
   hidePlayersPanel();
+  scorePanelOpen = false;
+  const scPanel = document.getElementById('scorePanel');
+  const scBtn = document.getElementById('scoreToggleBtn');
+  if(scPanel) scPanel.style.display = 'none';
+  if(scBtn) scBtn.style.display = 'none';
   app.innerHTML = '';
   app.appendChild(el(`<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
     ${header()}
@@ -2259,12 +2379,13 @@ function renderOnlineJoinScreen(errorMsg){
 }
 
 function renderOnline(){
-  if(!og){ hidePlayersPanel(); renderOnlineJoinScreen(); return; }
+  if(!og){ hidePlayersPanel(); renderScorePanel(); renderOnlineJoinScreen(); return; }
   if(og.phase!=='jokerChoice' && og.phase!=='blindJokerChoice'){
     const stuckOverlay = document.getElementById('jokerOverlay');
     if(stuckOverlay) stuckOverlay.remove();
   }
   renderPlayersPanel();
+  renderScorePanel();
   const me = rPlayerById(og, myId);
   if(me && me.banned){ renderBannedScreen(); return; }
   if(me && me.removedByHost){ renderRemovedScreen(); return; }
@@ -2285,6 +2406,7 @@ function renderOnline(){
 // ====== PANNELLO GIOCATORI (mini finestra a destra) ===========
 // ============================================================
 let playersPanelOpen = false;
+let scorePanelOpen = false;
 function hidePlayersPanel(){
   playersPanelOpen = false;
   const panel = document.getElementById('playersPanel');
@@ -2292,6 +2414,49 @@ function hidePlayersPanel(){
   if(panel) panel.style.display = 'none';
   if(toggleBtn) toggleBtn.style.display = 'none';
 }
+function renderScorePanel(){
+  const panel = document.getElementById('scorePanel');
+  const toggleBtn = document.getElementById('scoreToggleBtn');
+  if(!panel || !toggleBtn) return;
+
+  let players = null, roundCardCount = null, myIdentifier = null;
+  if(game){
+    players = game.players;
+    roundCardCount = game.roundCardCount;
+    myIdentifier = game.vsAI ? (game.players.find(p=>!p.isBot)||{}).id : null;
+  } else if(og){
+    players = og.players;
+    roundCardCount = og.roundCardCount;
+    myIdentifier = myId;
+  }
+
+  if(!players){
+    toggleBtn.style.display = 'none';
+    panel.style.display = 'none';
+    return;
+  }
+  toggleBtn.style.display = 'flex';
+
+  const activeCount = players.filter(p=>!p.eliminated).length;
+  const deckLeft = Math.max(0, 40 - activeCount*(roundCardCount||0));
+
+  const rows = players.slice().sort((a,b)=>a.seat-b.seat).map(p=>{
+    return `<div class="sc-row${p.eliminated?' sc-eliminated':''}">
+      <span class="sc-name">${p.name}${p.id===myIdentifier?' (tu)':''}</span>
+      <span class="sc-pt">${p.score}pt</span>
+    </div>`;
+  }).join('');
+
+  panel.innerHTML = `<div class="sc-title">Punteggio</div>
+    ${rows}
+    <hr class="sc-divider">
+    <div class="sc-deck">
+      <div class="sc-deck-label">Mazzo</div>
+      <div class="sc-deck-row">${cardBackHTML('tiny')}<span class="sc-deck-count">×${deckLeft}</span></div>
+    </div>`;
+  panel.style.display = scorePanelOpen ? 'block' : 'none';
+}
+
 function renderPlayersPanel(){
   const panel = document.getElementById('playersPanel');
   const toggleBtn = document.getElementById('playersToggleBtn');
@@ -2375,10 +2540,10 @@ function renderRemovedScreen(){
 
 function onlineInfoBar(){
   return `<div class="info-bar">
-    <div class="chip">Round <span class="v">${og.roundNumber}</span></div>
-    <div class="chip">Carte <span class="v">${og.roundCardCount}</span></div>
-    <div class="chip">Presa <span class="v">${og.trickIndex+1}/${og.roundCardCount}</span></div>
-    <div class="chip">Stanza <span class="v">${og.roomCode}</span></div>
+    <div class="chip"><span class="chip-label">Round</span><span class="v">${og.roundNumber}</span></div>
+    <div class="chip"><span class="chip-label">Carte</span><span class="v">${og.roundCardCount}</span></div>
+    <div class="chip"><span class="chip-label">Presa</span><span class="v">${og.trickIndex+1}/${og.roundCardCount}</span></div>
+    <div class="chip"><span class="chip-label">Stanza</span><span class="v">${og.roomCode}</span></div>
   </div>`;
 }
 function onlineScoreboard(highlightId){
@@ -2462,7 +2627,7 @@ function renderOnlineArena(){
     } else {
       const declared = og.bids[opp.id], taken = og.tricksWon[opp.id];
       const cls = taken===declared ? 'green' : 'red';
-      infoLine = `D <span class="${cls}">${declared}</span> · P <span class="${cls}">${taken}</span>`;
+      infoLine = `D <span class="${cls}">${declared}</span>/<span class="${cls}">${taken}</span>`;
     }
     let cardVisual;
     if(blind && phase==='bidding' && og.hands[opp.id]){
@@ -2505,6 +2670,7 @@ function renderOnlineArena(){
         ${cardHoverLabelHTML('cardHoverLabel')}`;
     }
     let actionSection = '';
+    let fixedBarHTML = '';
     if(isMe){
       let bidButtons;
       if(blind){
@@ -2520,19 +2686,24 @@ function renderOnlineArena(){
           return `<button class="bid-btn" data-val="${v}" ${disabled?'disabled':''}>${v}</button>`;
         }).join('');
       }
-      actionSection = `<div class="section-title" style="margin-top:10px;">🎯 Quante prese farai?</div><div class="bid-picker">${bidButtons}</div>`;
+      actionSection = `<div class="action-bar-spacer"></div>`;
+      fixedBarHTML = `<div class="fixed-action-bar">
+        <div class="section-title">🎯 Quante prese farai?</div>
+        <div class="bid-picker">${bidButtons}</div>
+      </div>`;
     } else {
       actionSection = `<p class="center-text" style="opacity:.75;margin-top:10px;font-size:13px;">⏳ In attesa che <strong style="color:var(--gold-light)">${rPlayerById(og,currentTurnId).name}</strong> dichiari...</p>`;
     }
-    bottomHTML = `<div class="panel center-text">
+    bottomHTML = `<div class="panel center-text hand-panel">
+      ${myStatLineHTML(og.bids[myId], og.tricksWon[myId]||0, me.score)}
       <div class="section-title">Le tue carte</div>
       ${handSection}
       ${actionSection}
-    </div>`;
+    </div>${fixedBarHTML}`;
   } else if((phase==='playing' || phase==='jokerChoice') && me){
     const isMe = currentTurnId===myId && phase==='playing';
-    bottomHTML = `<div class="panel center-text">
-      <p style="opacity:.75;font-size:13px;">La tua dichiarazione: <strong style="color:var(--gold-light)">${og.bids[myId]}</strong> · Le tue prese finora: <strong style="color:var(--gold-light)">${og.tricksWon[myId]||0}</strong></p>
+    bottomHTML = `<div class="panel center-text hand-panel">
+      ${myStatLineHTML(og.bids[myId], og.tricksWon[myId]||0, me.score)}
       <p class="center-text" style="opacity:.85;">${isMe ? '🎯 Tocca a te giocare!' : `⏳ In attesa che <strong style="color:var(--gold-light)">${rPlayerById(og,currentTurnId).name}</strong> giochi...`}</p>
       <div class="hand-row my-hand-row">${(og.hands[myId]||[]).map(c=>cardHTML(c,{clickable:isMe})).join('')}</div>
       ${cardHoverLabelHTML('cardHoverLabel')}
@@ -2540,7 +2711,7 @@ function renderOnlineArena(){
   } else if(phase==='trickResult' && me){
     const winner = rPlayerById(og, og.lastTrickWinner);
     const isHost = og.hostId===myId;
-    bottomHTML = `<div class="panel center-text">
+    bottomHTML = `<div class="panel center-text hand-panel">
       <div class="section-title">${winner.name}${winner.id===myId?' (tu)':''} si aggiudica la presa!</div>
       ${isHost
         ? `<div class="btn-row"><button class="btn" id="contBtn">Continua ora</button></div><p style="font-size:12px;opacity:.6;">Si continua automaticamente tra pochi secondi...</p>`
@@ -2552,8 +2723,9 @@ function renderOnlineArena(){
   app.appendChild(el(`<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
     ${header()}
     ${onlineInfoBar()}
-    <div class="table-arena">
+    <div class="table-arena" style="--seat-scale:${seatScaleFor(opponents.length)}; --tc-scale:${seatScaleFor(opponents.length+1)};">
       <div class="table-felt"></div>
+      <div class="table-corner tc-tl"><svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><path d="M2 20 Q2 2 20 2" fill="none" stroke="#c9a227" stroke-width="1.5"/><circle cx="20" cy="2" r="1.8" fill="#c9a227"/><circle cx="2" cy="20" r="1.8" fill="#c9a227"/></svg></div><div class="table-corner tc-tr"><svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><path d="M2 20 Q2 2 20 2" fill="none" stroke="#c9a227" stroke-width="1.5"/><circle cx="20" cy="2" r="1.8" fill="#c9a227"/><circle cx="2" cy="20" r="1.8" fill="#c9a227"/></svg></div><div class="table-corner tc-bl"><svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><path d="M2 20 Q2 2 20 2" fill="none" stroke="#c9a227" stroke-width="1.5"/><circle cx="20" cy="2" r="1.8" fill="#c9a227"/><circle cx="2" cy="20" r="1.8" fill="#c9a227"/></svg></div><div class="table-corner tc-br"><svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><path d="M2 20 Q2 2 20 2" fill="none" stroke="#c9a227" stroke-width="1.5"/><circle cx="20" cy="2" r="1.8" fill="#c9a227"/><circle cx="2" cy="20" r="1.8" fill="#c9a227"/></svg></div>
       ${seatsHTML}
       <div class="table-center-cards">${tableCardsHTML}</div>
     </div>
@@ -2713,15 +2885,23 @@ document.body.addEventListener('click', async (e)=>{
   }
 });
 
+function closeSidePanels(except){
+  if(except!=='players'){ playersPanelOpen=false; const p=document.getElementById('playersPanel'); if(p) p.style.display='none'; }
+  if(except!=='rules'){ rulesPanelOpen=false; const r=document.getElementById('rulesPanel'); if(r) r.style.display='none'; }
+  if(except!=='score'){ scorePanelOpen=false; const s=document.getElementById('scorePanel'); if(s) s.style.display='none'; }
+}
+
 document.getElementById('playersToggleBtn').onclick = ()=>{
   playersPanelOpen = !playersPanelOpen;
   const panel = document.getElementById('playersPanel');
   if(panel) panel.style.display = playersPanelOpen ? 'block' : 'none';
-  if(playersPanelOpen){
-    rulesPanelOpen = false;
-    const rp = document.getElementById('rulesPanel');
-    if(rp) rp.style.display = 'none';
-  }
+  if(playersPanelOpen) closeSidePanels('players');
+};
+
+document.getElementById('scoreToggleBtn').onclick = ()=>{
+  scorePanelOpen = !scorePanelOpen;
+  renderScorePanel();
+  if(scorePanelOpen) closeSidePanels('score');
 };
 
 const RULES_PANEL_HTML = `
@@ -2750,11 +2930,7 @@ document.getElementById('rulesToggleBtn').onclick = ()=>{
     panel.innerHTML = RULES_PANEL_HTML;
   }
   panel.style.display = rulesPanelOpen ? 'block' : 'none';
-  if(rulesPanelOpen){
-    playersPanelOpen = false;
-    const pp = document.getElementById('playersPanel');
-    if(pp) pp.style.display = 'none';
-  }
+  if(rulesPanelOpen) closeSidePanels('rules');
 };
 
 document.getElementById('homeIconBtn').onclick = ()=>{ showHome(); };
