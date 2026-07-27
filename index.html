@@ -843,24 +843,35 @@ function pickWithBluff(preferred, alternatives, bluffChance){
 function botDifficulty(){ return (game && game.aiDifficulty) || 'facile'; }
 
 function botEstimateHandStrength(hand, difficulty){
+  const numOpponents = Math.max(1, activePlayers().length - 1);
   if(difficulty==='estremo'){
-    // Expected-value estimate: for each card, probability it beats a random unseen card.
+    // For each card: probability it beats ONE random unseen card, raised to the number
+    // of opponents (approximating "beats everyone at the table this trick"). This is
+    // what makes a mediocre card (e.g. a low-to-mid coppe) correctly look weak once
+    // there are several opponents who might hold something in denari.
     const deckMinusHand = createDeck().filter(c => !hand.some(h=>h.id===c.id));
     let expected = 0;
     for(const c of hand){
-      if(c.suit==='jolly'){ expected += 0.85; continue; }
+      if(c.suit==='jolly'){ expected += 0.8; continue; }
       const r = rankOf(c);
       const weaker = deckMinusHand.filter(x=> x.suit!=='jolly' && rankOf(x) < r).length;
-      expected += deckMinusHand.length ? weaker / deckMinusHand.length : 0.5;
+      const pBeatsOne = deckMinusHand.length ? weaker / deckMinusHand.length : 0.5;
+      expected += Math.pow(pBeatsOne, numOpponents);
     }
     return expected;
   }
   if(difficulty==='medio'){
+    // Same idea but a gentler penalty (sqrt of opponent count) — smarter than "facile"
+    // but not as precisely calibrated as "estremo".
+    const deckMinusHand = createDeck().filter(c => !hand.some(h=>h.id===c.id));
+    const softOpponents = Math.sqrt(numOpponents);
     let score = 0;
     for(const c of hand){
-      if(c.suit==='jolly'){ score += 0.8; continue; }
+      if(c.suit==='jolly'){ score += 0.75; continue; }
       const r = rankOf(c);
-      score += Math.pow(Math.max(0,r)/40, 1.4);
+      const weaker = deckMinusHand.filter(x=> x.suit!=='jolly' && rankOf(x) < r).length;
+      const pBeatsOne = deckMinusHand.length ? weaker / deckMinusHand.length : 0.5;
+      score += Math.pow(pBeatsOne, softOpponents);
     }
     return score;
   }
@@ -957,6 +968,10 @@ function botChooseCard(playerId){
     else wantToWin = true;
   }
   const urgent = stillNeeds >= tricksRemaining; // must-win every remaining trick
+  // How aggressively to commit strength right now: 0 = no rush (can lead weak and wait),
+  // 1 = must win this trick (every remaining trick is needed). Scales smoothly in between,
+  // so a bot with slack doesn't burn its strongest cards the moment it still needs *a* trick.
+  const aggression = wantToWin ? (tricksRemaining>0 ? Math.max(0, Math.min(1, stillNeeds/tricksRemaining)) : 1) : 0;
 
   const bluffLead = difficulty==='estremo' ? 0.08 : difficulty==='medio' ? 0.18 : 0.3;
   const bluffLeadLow = difficulty==='estremo' ? 0.06 : difficulty==='medio' ? 0.12 : 0.2;
@@ -984,9 +999,19 @@ function botChooseCard(playerId){
         const certain = sortedAsc.filter(c=>botCardIsCertainWinner(c, hand));
         if(certain.length) return {card: certain[0], jokerCall:null};
       }
-      // lead with a fairly strong card, but not always the very strongest (keep some in reserve)
-      const topHalf = sortedAsc.slice(Math.ceil(sortedAsc.length/2));
-      const pool = topHalf.length ? topHalf : sortedAsc;
+      let pool;
+      if(difficulty==='facile'){
+        // beginner tier keeps the old, cruder "top half" habit
+        const topHalf = sortedAsc.slice(Math.ceil(sortedAsc.length/2));
+        pool = topHalf.length ? topHalf : sortedAsc;
+      } else {
+        // pick a card at the percentile matching real urgency: weak when there's slack,
+        // strong when every remaining trick is needed — not just "always fairly strong".
+        const centerIdx = Math.max(0, Math.min(sortedAsc.length-1, Math.round(aggression*(sortedAsc.length-1))));
+        const lo = Math.max(0, centerIdx-1);
+        const hi = Math.min(sortedAsc.length-1, centerIdx+1);
+        pool = sortedAsc.slice(lo, hi+1);
+      }
       const choice = pickWithBluff(pool[pool.length-1], pool.slice(0,-1), bluffLead);
       return {card: choice, jokerCall:null};
     } else {
