@@ -111,6 +111,18 @@
     width:100%;
     max-width:520px;
   }
+  @keyframes cardDeal{
+    from { opacity:0; transform: translateY(20px) scale(.9); }
+    to { opacity:1; transform: translateY(0) scale(1); }
+  }
+  .hand-row.my-hand-row.just-dealt .card{
+    animation: cardDeal .32s ease both;
+  }
+  .hand-row.my-hand-row.just-dealt .card:nth-child(1){ animation-delay:.02s; }
+  .hand-row.my-hand-row.just-dealt .card:nth-child(2){ animation-delay:.07s; }
+  .hand-row.my-hand-row.just-dealt .card:nth-child(3){ animation-delay:.12s; }
+  .hand-row.my-hand-row.just-dealt .card:nth-child(4){ animation-delay:.17s; }
+  .hand-row.my-hand-row.just-dealt .card:nth-child(5){ animation-delay:.22s; }
   .panel.hand-panel{
     max-width:660px; flex-shrink:0;
     margin-top:10px;
@@ -131,6 +143,9 @@
     background-position: 0 0, 6px 6px, top 6px right 6px, bottom 6px left 6px, bottom 6px right 6px;
     background-size: 100% 100%, 34px 34px, 34px 34px, 34px 34px, 34px 34px;
     padding:16px 24px;
+  }
+  .panel.hand-panel.thinking{
+    animation: turnHalo 2.6s ease-in-out infinite;
   }
   .my-stat-line{ font-size:16px; font-weight:700; margin-bottom:4px; }
   .my-stat-line .green{ color:#4fd671; font-weight:800; }
@@ -258,9 +273,14 @@
     .action-bar-spacer{ height:128px; }
   }
 
-  .table-arena{ position:relative; width:100%; max-width:720px; flex:0 0 auto; height:400px; margin:14px auto 10px; }
+  .table-arena{ position:relative; width:100%; max-width:720px; flex:0 0 auto; height:400px; margin:14px auto 10px; perspective:1700px; }
   .table-spacer{ flex:1 1 auto; min-height:0; width:100%; }
-  .table-arena{ filter: drop-shadow(0 14px 22px rgba(0,0,0,.55)); }
+  .table-3d-tilt{
+    position:absolute; inset:0;
+    transform: rotateX(6deg);
+    transform-style: preserve-3d;
+    filter: drop-shadow(0 18px 22px rgba(0,0,0,.5));
+  }
   .table-arena .table-felt{
     position:absolute; inset:0;
     background:
@@ -314,6 +334,7 @@
   }
   .seat-card-ratio.green{ color:#5cf08c; }
   .seat-card-ratio.red{ color:#ff6b6b; }
+  .seat-card-ratio.fuchsia{ color:#e84fd6; }
   @media (max-width:640px){
     .seat-card-ratio{ font-size:calc(24px * var(--seat-scale, 1)); }
   }
@@ -328,7 +349,16 @@
     white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:ellipsis; border:1px solid transparent;
   }
   .opponent-seat.thinking .seat-name{
-    color:var(--gold-light); border-color:var(--gold); text-shadow:0 0 8px rgba(201,162,39,.6);
+    color:var(--player-color, var(--gold-light)); border-color:var(--player-color, var(--gold));
+    text-shadow:0 0 8px var(--player-color, rgba(201,162,39,.6));
+  }
+  @keyframes turnHalo{
+    0%, 100% { box-shadow: 0 0 10px 2px var(--player-color, var(--gold)), 0 0 0 1px var(--player-color, var(--gold)); }
+    50% { box-shadow: 0 0 26px 9px var(--player-color, var(--gold)), 0 0 0 1px var(--player-color, var(--gold)); }
+  }
+  .opponent-seat.thinking .seat-card-wrap{
+    border-radius:8px;
+    animation: turnHalo 2.6s ease-in-out infinite;
   }
   .opponent-seat .seat-info{ font-size:calc(15px * var(--seat-scale, 1)); font-weight:800; opacity:.95; line-height:1.2; white-space:normal; word-break:keep-all; max-width:100%; }
   .opponent-seat .seat-info .fuchsia{ color:#e84fd6; font-weight:800; }
@@ -375,10 +405,31 @@
     display:flex; align-items:center; justify-content:center;
   }
   .table-cards{ display:flex; gap:calc(14px * var(--tc-scale, 1)); flex-wrap:wrap; justify-content:center; align-items:center;}
-  .table-cards .card{ width:calc(95px * var(--tc-scale, 1)); height:calc(157px * var(--tc-scale, 1)); }
-  @media (max-width:640px){
-    .table-cards .card{ width:calc(74px * var(--tc-scale, 1)); height:calc(123px * var(--tc-scale, 1)); }
+  .table-cards .flip-card-outer{
+    width:calc(95px * var(--tc-scale, 1)); height:calc(157px * var(--tc-scale, 1));
+    perspective:700px;
   }
+  .table-cards .card{
+    width:100%; height:100%;
+    border-color: var(--player-color, var(--ink)); border-width:3px;
+    box-shadow: 0 0 0 2px var(--player-color, transparent), 0 4px 10px rgba(0,0,0,.4);
+  }
+  @media (max-width:640px){
+    .table-cards .flip-card-outer{ width:calc(74px * var(--tc-scale, 1)); height:calc(123px * var(--tc-scale, 1)); }
+  }
+  .flip-card-inner{
+    position:relative; width:100%; height:100%;
+    transform-style:preserve-3d;
+    animation: cardFlipReveal 0.55s cubic-bezier(.34,1.15,.64,1) both;
+  }
+  .flip-card-inner.no-anim{ animation:none; transform:rotateY(0deg); }
+  @keyframes cardFlipReveal{
+    from { transform: rotateY(180deg) translateY(-14px); }
+    to { transform: rotateY(0deg) translateY(0); }
+  }
+  .flip-card-face{ position:absolute; inset:0; backface-visibility:hidden; -webkit-backface-visibility:hidden; }
+  .flip-card-back{ transform: rotateY(180deg); }
+  .flip-card-back .card{ border-color:var(--gold); box-shadow:none; }
   .table-card-slot{ display:flex; flex-direction:column; align-items:center; gap:6px; }
   .table-card-name{ font-size:calc(11px * var(--tc-scale, 1)); font-weight:700; color:var(--gold-light); text-align:center; max-width:70px;}
   .empty-table-msg{ font-style:italic; opacity:.6; font-size:14px; }
@@ -414,6 +465,20 @@
 
   #globalToolbar{ position:fixed; top:calc(10px + env(safe-area-inset-top)); right:calc(10px + env(safe-area-inset-right)); display:flex; gap:8px; z-index:1000; }
   .menu-toggle-btn{ display:none; }
+  @keyframes panelSlideIn{
+    from { opacity:0; transform: translateY(-10px) scale(.96); }
+    to { opacity:1; transform: translateY(0) scale(1); }
+  }
+  #mobileMenuPanel, #playersPanel, #rulesPanel, #scorePanel, #themePanel{
+    animation: panelSlideIn .22s cubic-bezier(.22,.9,.3,1.1) both;
+  }
+  @keyframes screenPanelIn{
+    from { opacity:0; transform: translateY(16px) scale(.97); }
+    to { opacity:1; transform: translateY(0) scale(1); }
+  }
+  .screen-panel{
+    animation: screenPanelIn .4s cubic-bezier(.22,.9,.3,1.1) both;
+  }
   #mobileMenuPanel{
     position:fixed; top:calc(54px + env(safe-area-inset-top)); right:calc(10px + env(safe-area-inset-right));
     background:rgba(11,42,32,.97); border:1px solid var(--gold); border-radius:12px; padding:8px;
@@ -506,7 +571,10 @@
   .bid-btn{
     width:46px; height:46px; border-radius:50%; border:2px solid var(--gold); background:var(--felt-dark);
     color:var(--cream); font-weight:800; font-size:16px; cursor:pointer; font-family:'Cinzel',serif;
+    transition: transform .12s ease, background .15s ease;
   }
+  .bid-btn:hover:not(:disabled){ transform:translateY(-2px); }
+  .bid-btn:active:not(:disabled){ transform:scale(.88); }
   .bid-btn.selected{ background:var(--gold); color:var(--ink); }
   .bid-btn:disabled{ opacity:.25; cursor:not-allowed; border-color:#555;}
 
@@ -651,30 +719,12 @@ const SUITS = ['bastoni','spade','coppe','denari']; // low -> high
 const SUIT_LABEL = {bastoni:'Bastoni', spade:'Spade', coppe:'Coppe', denari:'Denari'};
 const SUIT_COLOR = {bastoni:'var(--bastoni)', spade:'var(--spade)', coppe:'var(--coppe)', denari:'var(--denari)'};
 
-function suitIcon(suit, size){
-  const s = size || 30;
-  const icons = {
-    bastoni: `<svg viewBox="0 0 40 40" width="${s}" height="${s}"><rect x="17" y="4" width="6" height="30" rx="3" fill="${SUIT_COLOR.bastoni}"/><ellipse cx="20" cy="34" rx="9" ry="4" fill="${SUIT_COLOR.bastoni}"/></svg>`,
-    spade: `<svg viewBox="0 0 40 40" width="${s}" height="${s}"><path d="M20 3 L27 16 L33 22 L24 22 L26 33 L14 33 L16 22 L7 22 L13 16 Z" fill="${SUIT_COLOR.spade}"/></svg>`,
-    coppe: `<svg viewBox="0 0 40 40" width="${s}" height="${s}"><path d="M9 6 h22 c0 12 -5 17 -11 17 s-11 -5 -11 -17 Z" fill="${SUIT_COLOR.coppe}"/><rect x="18" y="23" width="4" height="8" fill="${SUIT_COLOR.coppe}"/><rect x="13" y="31" width="14" height="3" rx="1.5" fill="${SUIT_COLOR.coppe}"/></svg>`,
-    denari: `<svg viewBox="0 0 40 40" width="${s}" height="${s}"><circle cx="20" cy="20" r="15" fill="none" stroke="${SUIT_COLOR.denari}" stroke-width="4"/><circle cx="20" cy="20" r="6" fill="${SUIT_COLOR.denari}"/></svg>`
-  };
-  return icons[suit] || '';
-}
-
 function valueLabel(v){
   if(v<=7) return String(v);
   if(v===8) return 'Fante';
   if(v===9) return 'Cavallo';
   if(v===10) return 'Re';
 }
-function valueCorner(v){
-  if(v<=7) return String(v);
-  if(v===8) return 'F';
-  if(v===9) return 'C';
-  if(v===10) return 'R';
-}
-
 function createDeck(){
   const deck = [];
   for(const suit of SUITS){
@@ -1121,7 +1171,6 @@ function scheduleBotMove(){
       if(p && p.isBot){
         const val = botChooseBid(id);
         placeBid(id, val);
-        render();
       }
     } else if(game.phase==='playing'){
       const id = currentPlayerToPlayId();
@@ -1134,7 +1183,6 @@ function scheduleBotMove(){
         } else {
           playCard(id, card.id);
         }
-        render();
       }
     } else if(game.phase==='blindJokerChoice'){
       const ownerId = game.pendingJokerCard;
@@ -1143,7 +1191,6 @@ function scheduleBotMove(){
         const declared = game.bids[ownerId];
         const wantToWin = declared === 1;
         confirmJokerChoice(botChooseJokerCall(ownerId, wantToWin));
-        render();
       }
     }
   }, delay);
@@ -1184,6 +1231,14 @@ function endRound(){
   });
   game.lastRoundSummary = summary;
   const newlyEliminated = active.filter(p=>p.score>=7);
+  if(newlyEliminated.length===active.length && active.length>=1){
+    // Everyone who was still active busted in the same round — instead of ending
+    // the game with nobody left standing, the lowest score (the "least busted")
+    // survives as the winner.
+    let survivor = newlyEliminated[0];
+    for(const p of newlyEliminated) if(p.score < survivor.score) survivor = p;
+    newlyEliminated.splice(newlyEliminated.indexOf(survivor), 1);
+  }
   newlyEliminated.forEach(p=>p.eliminated=true);
   game.phase = 'roundSummary';
   render();
@@ -1241,6 +1296,13 @@ function cardHTML(card, opts){
 function cardBackHTML(size){
   const cls = size==='tiny' ? 'tiny' : (size ? 'small' : '');
   return `<div class="card back ${cls}"></div>`;
+}
+
+function cardFlipRevealHTML(card, animate){
+  return `<div class="flip-card-outer"><div class="flip-card-inner${animate?'':' no-anim'}">
+    <div class="flip-card-face flip-card-front">${cardHTML(card, {small:true})}</div>
+    <div class="flip-card-face flip-card-back">${cardBackHTML('small')}</div>
+  </div></div>`;
 }
 
 function myStatLineHTML(declared, taken, score){
@@ -1406,6 +1468,11 @@ function computeSeatPositions(n){
   });
 }
 
+const PLAYER_COLORS = ['#d4af6a','#6b96b8','#c47a52','#7ba888','#b8708f','#8a7ab0','#5f9e97','#b98a5e'];
+function getPlayerColor(seat){
+  return PLAYER_COLORS[((seat%PLAYER_COLORS.length)+PLAYER_COLORS.length)%PLAYER_COLORS.length];
+}
+
 function seatScaleFor(n){
   if(n<=3) return 1;
   if(n===4) return 0.92;
@@ -1415,6 +1482,20 @@ function seatScaleFor(n){
 }
 
 let trickAdvanceScheduled = false;
+// Track what's already been animated so re-renders (bot moves, difficulty tweaks, etc.)
+// don't replay entrance animations on content that was already shown.
+let localTableAnimCount = 0;
+let localHandDealKey = null;
+// Tracks which "screens" have already played their one-time entrance animation,
+// so screens that redraw themselves for internal reasons (a +/- click, lobby
+// polling, waiting for a round) don't replay it on every redraw — only the
+// genuine first arrival at that screen/step does.
+const screenEnteredFlags = {};
+function screenJustEntered(key){
+  if(!screenEnteredFlags[key]){ screenEnteredFlags[key] = true; return true; }
+  return false;
+}
+function resetScreenEntered(key){ screenEnteredFlags[key] = false; }
 function scheduleTrickAdvance(){
   if(trickAdvanceScheduled || !game || game.phase!=='trickResult') return;
   trickAdvanceScheduled = true;
@@ -1440,6 +1521,10 @@ function renderLocalArena(){
   const me = playerById(meId);
   const opponents = activePlayers().filter(p=>p.id!==meId);
   const seatPositions = computeSeatPositions(opponents.length);
+  const handDealKey = me ? `${game.roundNumber}-${me.id}` : null;
+  const handJustDealt = handDealKey && localHandDealKey !== handDealKey;
+  if(handDealKey) localHandDealKey = handDealKey;
+  const handRowClass = `hand-row my-hand-row${handJustDealt?' just-dealt':''}`;
 
   let currentTurnId = null;
   if(phase==='bidding') currentTurnId = currentBidderId();
@@ -1457,7 +1542,7 @@ function renderLocalArena(){
       if(blind){
         infoLine = game.bids[opp.id]===null ? '…' : (game.bids[opp.id]===1?'Prendo':'Non prendo');
       } else {
-        infoLine = game.bids[opp.id]===null ? '…' : `DICHIARATE: <span class="fuchsia">${game.bids[opp.id]}</span>`;
+        cardRatioOverlay = game.bids[opp.id]===null ? '' : `<div class="seat-card-ratio fuchsia">${game.bids[opp.id]}</div>`;
       }
     } else {
       const declared = game.bids[opp.id], taken = game.tricksWon[opp.id];
@@ -1470,18 +1555,21 @@ function renderLocalArena(){
     } else {
       cardVisual = `<div class="seat-card-wrap">${cardBackHTML('tiny')}${cardRatioOverlay}</div><span class="seat-count">×${cardsRemaining}</span>`;
     }
-    return `<div class="opponent-seat${isTurn?' thinking':''}" style="left:${pos.left}%; top:${pos.top}%;">
+    return `<div class="opponent-seat${isTurn?' thinking':''}" style="left:${pos.left}%; top:${pos.top}%; --player-color:${getPlayerColor(opp.seat)};">
       <div class="seat-cards">${cardVisual}</div>
       <div class="seat-name">${opp.name}${isTurn?' <span class="thinking-dots">●●●</span>':''}</div>
       ${infoLine ? `<div class="seat-info">${infoLine}</div>` : ''}
     </div>`;
   }).join('');
 
+  if(game.table.length===0) localTableAnimCount = 0;
+  const tableAnimBaseline = localTableAnimCount;
   const tableCardsHTML = (game.table && game.table.length)
-    ? `<div class="table-cards">${game.table.map(t=>`
-        <div class="table-card-slot">${cardHTML(t.card,{small:true})}<div class="table-card-name">${playerById(t.playerId).name}${t.jokerCall?` (${t.jokerCall})`:''}</div></div>
+    ? `<div class="table-cards">${game.table.map((t,idx)=>`
+        <div class="table-card-slot" style="--player-color:${getPlayerColor(playerById(t.playerId).seat)};">${cardFlipRevealHTML(t.card, idx>=tableAnimBaseline)}<div class="table-card-name">${playerById(t.playerId).name}${t.jokerCall?` (${t.jokerCall})`:''}</div></div>
       `).join('')}</div>`
     : `<div class="empty-table-msg">${phase==='bidding' ? '' : 'Nessuna carta ancora giocata in questa presa.'}</div>`;
+  localTableAnimCount = game.table.length;
 
   let tableBestRank = null;
   if(game.table && game.table.length){
@@ -1501,7 +1589,7 @@ function renderLocalArena(){
       handSection = `<p class="center-text" style="opacity:.8;font-size:13px;">La tua carta è nascosta (vedi quelle degli avversari intorno al tavolo).</p>
         <div class="hand-row">${cardBackHTML(false)}</div>`;
     } else {
-      handSection = `<div class="hand-row my-hand-row">${game.hands[me.id].map(c=>cardHTML(c,{small:true})).join('')}</div>
+      handSection = `<div class="${handRowClass}">${game.hands[me.id].map(c=>cardHTML(c,{small:true})).join('')}</div>
         ${cardHoverLabelHTML('cardHoverLabel')}`;
     }
     let actionSection = '';
@@ -1537,21 +1625,21 @@ function renderLocalArena(){
     </div>${fixedBarHTML}`;
   } else if((phase==='playing' || phase==='jokerChoice') && me){
     const isMe = currentTurnId===me.id && phase==='playing';
-    bottomHTML = `<div class="panel center-text hand-panel">
+    bottomHTML = `<div class="panel center-text hand-panel${isMe?' thinking':''}" style="--player-color:${getPlayerColor(me.seat)};">
       <div class="section-title">${me.name}</div>
       ${myStatLineHTML(game.bids[me.id], game.tricksWon[me.id], me.score)}
-      <div class="hand-row my-hand-row">${game.hands[me.id].map(c=>cardHTML(c,{clickable:isMe})).join('')}</div>
+      <div class="${handRowClass}">${game.hands[me.id].map(c=>cardHTML(c,{clickable:isMe})).join('')}</div>
       ${cardHoverLabelHTML('cardHoverLabel')}
     </div>`;
   } else if(phase==='trickResult' && me){
     const winnerName = playerById(game.lastTrickWinner).name;
     bottomHTML = `<div class="panel center-text hand-panel">
       <div class="section-title">${winnerName}${game.lastTrickWinner===me.id?' (tu)':''} si aggiudica la presa!</div>
-      <div class="hand-row my-hand-row">${game.hands[me.id].map(c=>cardHTML(c,{small:true})).join('')}</div>
+      <div class="${handRowClass}">${game.hands[me.id].map(c=>cardHTML(c,{small:true})).join('')}</div>
     </div>`;
   } else if(me){
     bottomHTML = `<div class="panel center-text hand-panel">
-      <div class="hand-row my-hand-row">${game.hands[me.id].map(c=>cardHTML(c,{small:true})).join('')}</div>
+      <div class="${handRowClass}">${game.hands[me.id].map(c=>cardHTML(c,{small:true})).join('')}</div>
     </div>`;
   }
 
@@ -1559,10 +1647,12 @@ function renderLocalArena(){
     ${header(true)}
     ${infoBarHTML()}
     <div class="table-arena" style="--seat-scale:${seatScaleFor(opponents.length)}; --tc-scale:${seatScaleFor(opponents.length+1)};">
+    <div class="table-3d-tilt">
       <div class="table-felt"></div>
       <div class="table-corner tc-tl"><svg viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg"><path d="M3 32 Q3 3 32 3" fill="none" stroke="#c9a227" stroke-width="1.8"/><path d="M3 22 Q3 11 14 11" fill="none" stroke="#c9a227" stroke-width="1.1" opacity="0.75"/><path d="M22 3 Q11 3 11 14" fill="none" stroke="#c9a227" stroke-width="1.1" opacity="0.75"/><circle cx="32" cy="3" r="2.4" fill="#c9a227"/><circle cx="3" cy="32" r="2.4" fill="#c9a227"/><circle cx="3" cy="3" r="2" fill="none" stroke="#c9a227" stroke-width="1.1"/><path d="M14 11 Q9 9 8 4" fill="none" stroke="#c9a227" stroke-width="0.9" opacity="0.6"/><path d="M11 14 Q9 9 4 8" fill="none" stroke="#c9a227" stroke-width="0.9" opacity="0.6"/></svg></div><div class="table-corner tc-tr"><svg viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg"><path d="M3 32 Q3 3 32 3" fill="none" stroke="#c9a227" stroke-width="1.8"/><path d="M3 22 Q3 11 14 11" fill="none" stroke="#c9a227" stroke-width="1.1" opacity="0.75"/><path d="M22 3 Q11 3 11 14" fill="none" stroke="#c9a227" stroke-width="1.1" opacity="0.75"/><circle cx="32" cy="3" r="2.4" fill="#c9a227"/><circle cx="3" cy="32" r="2.4" fill="#c9a227"/><circle cx="3" cy="3" r="2" fill="none" stroke="#c9a227" stroke-width="1.1"/><path d="M14 11 Q9 9 8 4" fill="none" stroke="#c9a227" stroke-width="0.9" opacity="0.6"/><path d="M11 14 Q9 9 4 8" fill="none" stroke="#c9a227" stroke-width="0.9" opacity="0.6"/></svg></div><div class="table-corner tc-bl"><svg viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg"><path d="M3 32 Q3 3 32 3" fill="none" stroke="#c9a227" stroke-width="1.8"/><path d="M3 22 Q3 11 14 11" fill="none" stroke="#c9a227" stroke-width="1.1" opacity="0.75"/><path d="M22 3 Q11 3 11 14" fill="none" stroke="#c9a227" stroke-width="1.1" opacity="0.75"/><circle cx="32" cy="3" r="2.4" fill="#c9a227"/><circle cx="3" cy="32" r="2.4" fill="#c9a227"/><circle cx="3" cy="3" r="2" fill="none" stroke="#c9a227" stroke-width="1.1"/><path d="M14 11 Q9 9 8 4" fill="none" stroke="#c9a227" stroke-width="0.9" opacity="0.6"/><path d="M11 14 Q9 9 4 8" fill="none" stroke="#c9a227" stroke-width="0.9" opacity="0.6"/></svg></div><div class="table-corner tc-br"><svg viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg"><path d="M3 32 Q3 3 32 3" fill="none" stroke="#c9a227" stroke-width="1.8"/><path d="M3 22 Q3 11 14 11" fill="none" stroke="#c9a227" stroke-width="1.1" opacity="0.75"/><path d="M22 3 Q11 3 11 14" fill="none" stroke="#c9a227" stroke-width="1.1" opacity="0.75"/><circle cx="32" cy="3" r="2.4" fill="#c9a227"/><circle cx="3" cy="32" r="2.4" fill="#c9a227"/><circle cx="3" cy="3" r="2" fill="none" stroke="#c9a227" stroke-width="1.1"/><path d="M14 11 Q9 9 8 4" fill="none" stroke="#c9a227" stroke-width="0.9" opacity="0.6"/><path d="M11 14 Q9 9 4 8" fill="none" stroke="#c9a227" stroke-width="0.9" opacity="0.6"/></svg></div>
       ${seatsHTML}
       <div class="table-center-cards">${tableCardsHTML}</div>
+    </div>
     </div>
     <div class="table-spacer"></div>
     ${bottomHTML}
@@ -1626,6 +1716,7 @@ function infoBarHTML(){
 // ---- Setup screen ----
 function renderSetup(){
   app.innerHTML = '';
+  const justEntered = screenJustEntered('localSetup');
   window._setupCount = window._setupCount || 4;
   window._setupNames = window._setupNames || Array(8).fill('').map((_,i)=>'');
   const count = window._setupCount;
@@ -1640,7 +1731,7 @@ function renderSetup(){
   app.appendChild(el(`<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
     ${header()}
     <div class="subtitle">Il gioco delle previsioni — 40 carte, nessuna pietà</div>
-    <div class="panel">
+    <div class="panel${justEntered?' screen-panel':''}">
       <div class="section-title">Quanti giocatori?</div>
       <div class="player-count-row">
         <button class="count-btn" id="countMinus">−</button>
@@ -1675,6 +1766,7 @@ function renderSetup(){
       names.push(n || ('Giocatore '+(i+1)));
     }
     newGame(names);
+    resetScreenEntered('roundIntro-'+game.roundNumber);
     render();
   };
   document.getElementById('rulesBtn').onclick = showRulesModal;
@@ -1684,6 +1776,7 @@ function renderSetup(){
 const BOT_NAME_POOL = ['Rosina','Gigetto','Adelmo','Pierina','Learco','Bruna','Osvaldo','Ermelinda','Nando','Iole'];
 function renderAISetupScreen(){
   app.innerHTML = '';
+  const justEntered = screenJustEntered('aiSetup');
   window._aiName = window._aiName===undefined ? '' : window._aiName;
   window._aiBotCount = window._aiBotCount || 3;
   window._aiDifficulty = window._aiDifficulty || 'facile';
@@ -1695,7 +1788,7 @@ function renderAISetupScreen(){
   app.appendChild(el(`<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
     ${header()}
     <div class="subtitle">Tu contro l'intelligenza artificiale</div>
-    <div class="panel">
+    <div class="panel${justEntered?' screen-panel':''}">
       <div class="section-title">La tua stanza contro l'IA</div>
       <label class="field-label">Il tuo nome</label>
       <input type="text" id="aiPlayerName" placeholder="Il tuo nome" value="${window._aiName}">
@@ -1746,6 +1839,7 @@ function renderAISetupScreen(){
       botFlags.push(true);
     }
     newGame(names, botFlags, window._aiDifficulty);
+    resetScreenEntered('roundIntro-'+game.roundNumber);
     render();
   };
   document.getElementById('backHomeFromAI').onclick = showHome;
@@ -1778,10 +1872,11 @@ function showRulesModal(){
 // ---- Round intro ----
 function renderRoundIntro(){
   const dealer = playerById(game.players.find(p=>p.seat===game.dealerSeat).id);
+  const justEntered = screenJustEntered('roundIntro-'+game.roundNumber);
   app.appendChild(el(`<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
     ${header()}
     ${infoBarHTML()}
-    <div class="panel center-text">
+    <div class="panel center-text${justEntered?' screen-panel':''}">
       <div class="section-title">Round ${game.roundNumber} — ${game.roundCardCount} cart${game.roundCardCount===1?'a':'e'}</div>
       <p style="opacity:.85;">Mazziere di turno: <strong style="color:var(--gold-light)">${dealer.name}</strong></p>
       ${game.roundCardCount===1 ? `<p style="opacity:.85; font-style:italic;">Round speciale: vedrete le carte di tutti tranne la vostra!</p>` : ''}
@@ -1817,144 +1912,7 @@ function renderPassScreen(kind){
 }
 
 // ---- Bidding ----
-function renderBidding(){
-  const id = currentBidderId();
-  const p = playerById(id);
-  const K = game.roundCardCount;
-  const blind = K===1;
-  const hand = game.hands[id];
-  const isLast = isLastBidder();
-  const sumSoFar = sumBidsSoFar();
-
-  let handSection;
-  if(blind){
-    // show everyone else's single card, hide own
-    const others = game.playOrder.filter(pid=>pid!==id).map(pid=>{
-      const c = game.hands[pid][0];
-      return `<div class="table-card-slot">${cardHTML(c,{small:true})}<div class="table-card-name">${playerById(pid).name}</div></div>`;
-    }).join('');
-    handSection = `<p class="center-text" style="opacity:.8;font-size:13px;">Le carte degli altri (la tua è nascosta):</p>
-      <div class="hand-row">${others}</div>
-      <div class="hand-row">${cardBackHTML(true)}</div>
-      ${cardHoverLabelHTML('cardHoverLabel')}`;
-  } else {
-    handSection = `<p class="center-text" style="opacity:.8;font-size:13px;">Le tue carte:</p>
-      <div class="hand-row">${hand.map(c=>cardHTML(c,{small:true})).join('')}</div>
-      ${cardHoverLabelHTML('cardHoverLabel')}`;
-  }
-
-  let bidButtons;
-  if(blind){
-    bidButtons = [0,1].map(v=>{
-      const would = sumSoFar+v;
-      const disabled = isLast && would===1 && K===1;
-      return `<button class="bid-btn" data-val="${v}" ${disabled?'disabled':''}>${v===1?'Prendo':'No'}</button>`;
-    }).join('');
-  } else {
-    bidButtons = Array.from({length:K+1}).map((_,v)=>{
-      const would = sumSoFar+v;
-      const disabled = isLast && would===K;
-      return `<button class="bid-btn" data-val="${v}" ${disabled?'disabled':''}>${v}</button>`;
-    }).join('');
-  }
-
-  app.appendChild(el(`<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
-    ${header()}
-    ${infoBarHTML()}
-    <div class="panel center-text">
-      <div class="section-title">${p.name}, quante prese farai?</div>
-      ${handSection}
-      ${blind ? `<p style="font-size:12.5px;opacity:.7;">${isLast ? (sumSoFar===0 ? 'Sei l\'ultimo: non puoi dire "Prendo" (il totale farebbe 1) — devi dire "Non prendo".' : sumSoFar===1 ? 'Sei l\'ultimo: non puoi dire "Non prendo" (il totale resterebbe 1) — devi dire "Prendo".' : 'Sei l\'ultimo a dichiarare, puoi scegliere liberamente.') : 'Ricorda: il totale delle dichiarazioni di questo round non potrà mai essere uguale a 1.'}</p>` : ''}
-      ${!blind ? `<p style="font-size:12.5px;opacity:.7;">Totale dichiarato finora: ${sumSoFar}${isLast ? ` — non puoi scegliere ${K-sumSoFar>=0 && K-sumSoFar<=K ? K-sumSoFar : ''} (il totale non può fare ${K})` : ''}</p>` : ''}
-      <div class="bid-picker">${bidButtons}</div>
-      ${scoreboardHTML(id)}
-    </div>
-  </div>`));
-  wireCardHover('cardHoverLabel');
-
-  document.querySelectorAll('.bid-btn').forEach(btn=>{
-    btn.onclick = ()=>{
-      if(btn.disabled) return;
-      const val = parseInt(btn.dataset.val);
-      const wasLast = isLastBidder();
-      placeBid(id, val);
-      if(!wasLast){
-        game.phase = game.vsAI ? 'bidding' : 'passToBid';
-        render();
-      }
-    };
-  });
-}
-
 // ---- Playing ----
-function renderPlaying(skipHandlers){
-  const id = currentPlayerToPlayId();
-  const p = playerById(id);
-  const hand = game.hands[id];
-
-  const tableHTML = game.table.length ? `<div class="table-cards">${game.table.map(t=>`
-    <div class="table-card-slot">${cardHTML(t.card,{})}<div class="table-card-name">${playerById(t.playerId).name}${t.jokerCall?` (${t.jokerCall})`:''}</div></div>
-  `).join('')}</div>` : `<div class="empty-table-msg">Nessuna carta ancora giocata in questa presa.</div>`;
-
-  let tableBestRank = null;
-  if(game.table.length){
-    let winner = game.table[0];
-    for(const entry of game.table) if(effectiveRank(entry) > effectiveRank(winner)) winner = entry;
-    tableBestRank = effectiveRank(winner);
-  }
-
-  const sideData = activePlayers().map(pl=>({
-    id: pl.id, name: pl.name, score: pl.score,
-    declared: game.bids[pl.id], taken: game.tricksWon[pl.id],
-    isMe: game.vsAI && !pl.isBot
-  }));
-
-  app.appendChild(el(`<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
-    ${header()}
-    ${infoBarHTML()}
-    <div class="table-row-layout">
-      ${playersSidePanelHTML(sideData, id)}
-      <div class="table-wrap"><div class="table-cards-container">${tableHTML}</div></div>
-    </div>
-    <div class="panel center-text">
-      <div class="section-title">${p.name}, tocca a te</div>
-      <p style="opacity:.75;font-size:13px;">Dichiarazione: <strong style="color:var(--gold-light)">${game.bids[id]}</strong> · Prese finora: <strong style="color:var(--gold-light)">${game.tricksWon[id]}</strong></p>
-      <div class="hand-row">${hand.map(c=>cardHTML(c,{clickable:!skipHandlers})).join('')}</div>
-      ${cardHoverLabelHTML('cardHoverLabel')}
-      ${scoreboardHTML(id)}
-    </div>
-  </div>`));
-  wireCardHover('cardHoverLabel', tableBestRank);
-
-  if(skipHandlers) return;
-  document.querySelectorAll('.hand-row .card.clickable').forEach(cardEl=>{
-    cardEl.onclick = ()=>{
-      const cardId = cardEl.dataset.card;
-      const wasLastPlayer = game.turnPointer === game.playOrder.length-1;
-      playCard(id, cardId);
-      if(game.phase==='jokerChoice') return; // modal will handle
-      if(!wasLastPlayer && game.phase==='playing'){
-        game.phase = game.vsAI ? 'playing' : 'passToPlay';
-        render();
-      }
-    };
-  });
-}
-
-function renderBlindReveal(){
-  const tableHTML = `<div class="table-cards">${game.table.map(t=>`
-    <div class="table-card-slot">${cardHTML(t.card,{})}<div class="table-card-name">${playerById(t.playerId).name}</div></div>
-  `).join('')}</div>`;
-  app.appendChild(el(`<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
-    ${header()}
-    ${infoBarHTML()}
-    <div class="table-wrap"><div class="table-cards-container">${tableHTML}</div></div>
-    <div class="panel center-text">
-      <div class="section-title">Si rivela il Jolly...</div>
-    </div>
-  </div>`));
-}
-
 function renderJokerModal(){
   const existing = document.getElementById('jokerOverlay');
   if(existing) existing.remove();
@@ -1984,32 +1942,6 @@ function afterJokerResume(){
   render();
 }
 
-function renderTrickResult(){
-  const winner = playerById(game.lastTrickWinner);
-  const sideData = activePlayers().map(pl=>({
-    id: pl.id, name: pl.name, score: pl.score,
-    declared: game.bids[pl.id], taken: game.tricksWon[pl.id],
-    isMe: game.vsAI && !pl.isBot
-  }));
-  app.appendChild(el(`<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
-    ${header()}
-    ${infoBarHTML()}
-    <div class="table-row-layout">
-      ${playersSidePanelHTML(sideData, game.lastTrickWinner)}
-      <div class="table-wrap"><div class="table-cards">${game.table.map(t=>`
-        <div class="table-card-slot">${cardHTML(t.card,{})}<div class="table-card-name">${playerById(t.playerId).name}${t.jokerCall?` (${t.jokerCall})`:''}</div></div>
-      `).join('')}</div></div>
-    </div>
-    <div class="panel center-text">
-      <div class="section-title">${winner.name} si aggiudica la presa!</div>
-      <div class="btn-row"><button class="btn" id="contBtn">Continua</button></div>
-    </div>
-  </div>`));
-  document.getElementById('contBtn').onclick = ()=>{
-    nextTrickOrEndRound();
-  };
-}
-
 function renderRoundSummary(){
   const rows = game.lastRoundSummary.map(s=>{
     const deltaCls = s.delta===0 ? 'delta-zero' : 'delta-add';
@@ -2035,15 +1967,22 @@ function renderRoundSummary(){
 }
 
 function renderGameEnd(){
-  const winner = activePlayers()[0];
+  const remaining = activePlayers();
+  const singleWinner = remaining.length===1 ? remaining[0] : null;
+  const humanEliminatedEarly = game.vsAI && remaining.length>1;
   if(game.vsAI && !statsRecorded){
-    recordGameResult(!!(winner && !winner.isBot));
+    recordGameResult(!!(singleWinner && !singleWinner.isBot));
     statsRecorded = true;
   }
+  const bannerHTML = singleWinner
+    ? `🏆 ${singleWinner.name} vince la partita!`
+    : humanEliminatedEarly
+      ? `Sei stato eliminato — partita finita qui (erano ancora in gara: ${remaining.map(p=>p.name).join(', ')})`
+      : `🏆 Partita conclusa`;
   app.appendChild(el(`<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
     ${header()}
     <div class="panel center-text">
-      <div class="winner-banner">🏆 ${winner ? winner.name : '—'} vince la partita!</div>
+      <div class="winner-banner">${bannerHTML}</div>
       ${scoreboardHTML()}
       <div class="btn-row"><button class="btn" id="newGameBtn">Nuova partita</button></div>
       <div class="center-text"><button class="rules-link" id="backHomeFromEnd">← Cambia modalità</button></div>
@@ -2075,7 +2014,7 @@ function showHome(){
   app.appendChild(el(`<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
     ${header()}
     <div class="subtitle">Il gioco delle previsioni — 40 carte, nessuna pietà</div>
-    <div class="panel center-text">
+    <div class="panel center-text screen-panel">
       <div class="section-title">Come vuoi giocare?</div>
       <p style="opacity:.8;font-size:13.5px;">In locale passate un solo dispositivo a turno. Online ognuno usa il proprio, con la propria mano segreta.</p>
       <div class="btn-row">
@@ -2098,9 +2037,9 @@ function showHome(){
       ` : `<p style="opacity:.75;font-size:13.5px;">Non hai ancora completato nessuna partita contro l'IA o online — le statistiche compariranno qui (salvate solo su questo dispositivo).</p>`}
     </div>
   </div>`));
-  document.getElementById('pickLocalBtn').onclick = ()=>{ game=null; render(); };
-  document.getElementById('pickOnlineBtn').onclick = ()=>{ renderOnlineJoinScreen(); };
-  document.getElementById('pickAIBtn').onclick = ()=>{ renderAISetupScreen(); };
+  document.getElementById('pickLocalBtn').onclick = ()=>{ resetScreenEntered('localSetup'); game=null; render(); };
+  document.getElementById('pickOnlineBtn').onclick = ()=>{ resetScreenEntered('onlineJoin'); renderOnlineJoinScreen(); };
+  document.getElementById('pickAIBtn').onclick = ()=>{ resetScreenEntered('aiSetup'); renderAISetupScreen(); };
 }
 
 // ============================================================
@@ -2255,7 +2194,13 @@ function rEndRound(state){
     return {id:p.id, name:p.name, bid, won, delta, newScore:p.score};
   });
   state.lastRoundSummary = summary;
-  active.filter(p=>p.score>=7).forEach(p=>p.eliminated=true);
+  const newlyEliminated = active.filter(p=>p.score>=7);
+  if(newlyEliminated.length===active.length && active.length>=1){
+    let survivor = newlyEliminated[0];
+    for(const p of newlyEliminated) if(p.score < survivor.score) survivor = p;
+    newlyEliminated.splice(newlyEliminated.indexOf(survivor), 1);
+  }
+  newlyEliminated.forEach(p=>p.eliminated=true);
   state.phase = 'roundSummary';
 }
 
@@ -2529,10 +2474,11 @@ function renderOnlineJoinScreen(errorMsg){
   stopPolling();
   stopHeartbeat();
   app.innerHTML = '';
+  const justEntered = screenJustEntered('onlineJoin');
   app.appendChild(el(`<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
     ${header()}
     <div class="subtitle">Modalità online — ognuno con il proprio dispositivo</div>
-    <div class="panel">
+    <div class="panel${justEntered?' screen-panel':''}">
       <div class="section-title">Entra in una partita</div>
       <label class="field-label">Il tuo nome</label>
       <input type="text" id="onlineName" placeholder="Il tuo nome" value="${myName||''}">
@@ -2746,11 +2692,12 @@ function onlineScoreboard(highlightId){
 
 function renderLobby(){
   const isHost = og.hostId===myId;
+  const justEntered = screenJustEntered('lobby-'+og.roomCode);
   const playersHTML = og.players.map((p,i)=>`<div class="name-row"><div class="seat-badge">${i+1}</div><div>${p.name}${p.id===og.hostId?' 👑':''}${p.id===myId?' <em>(tu)</em>':''}</div></div>`).join('');
   app.innerHTML = '';
   app.appendChild(el(`<div style="width:100%;display:flex;flex-direction:column;align-items:center;">
     ${header()}
-    <div class="panel">
+    <div class="panel${justEntered?' screen-panel':''}">
       <div class="section-title">Sala d'attesa</div>
       <p class="center-text" style="opacity:.85;">Codice stanza:</p>
       <p class="center-text" style="color:var(--gold-light);font-size:28px;letter-spacing:.15em;font-family:'Cinzel',serif;font-weight:700;">${og.roomCode}</p>
@@ -2784,12 +2731,18 @@ function renderLobby(){
   };
 }
 
+let onlineTableAnimCount = 0;
+let onlineHandDealKey = null;
 function renderOnlineArena(){
   const phase = og.phase;
   const blind = og.roundCardCount===1;
   const me = rPlayerById(og, myId);
   const opponents = rActivePlayers(og).filter(p=>p.id!==myId);
   const seatPositions = computeSeatPositions(opponents.length);
+  const dealKey = me ? `${og.roundNumber}-${myId}` : null;
+  const handJustDealt = dealKey && onlineHandDealKey !== dealKey;
+  if(dealKey) onlineHandDealKey = dealKey;
+  const handRowClass = `hand-row my-hand-row${handJustDealt?' just-dealt':''}`;
 
   let currentTurnId = null;
   if(phase==='bidding') currentTurnId = rCurrentBidderId(og);
@@ -2807,7 +2760,7 @@ function renderOnlineArena(){
       if(blind){
         infoLine = og.bids[opp.id]===null ? '…' : (og.bids[opp.id]===1?'Prendo':'Non prendo');
       } else {
-        infoLine = og.bids[opp.id]===null ? '…' : `DICHIARATE: <span class="fuchsia">${og.bids[opp.id]}</span>`;
+        cardRatioOverlay = og.bids[opp.id]===null ? '' : `<div class="seat-card-ratio fuchsia">${og.bids[opp.id]}</div>`;
       }
     } else {
       const declared = og.bids[opp.id], taken = og.tricksWon[opp.id];
@@ -2820,18 +2773,21 @@ function renderOnlineArena(){
     } else {
       cardVisual = `<div class="seat-card-wrap">${cardBackHTML('tiny')}${cardRatioOverlay}</div><span class="seat-count">×${cardsRemaining}</span>`;
     }
-    return `<div class="opponent-seat${isTurn?' thinking':''}" style="left:${pos.left}%; top:${pos.top}%;">
+    return `<div class="opponent-seat${isTurn?' thinking':''}" style="left:${pos.left}%; top:${pos.top}%; --player-color:${getPlayerColor(opp.seat)};">
       <div class="seat-cards">${cardVisual}</div>
       <div class="seat-name">${opp.name}${isTurn?' <span class="thinking-dots">●●●</span>':''}</div>
       ${infoLine ? `<div class="seat-info">${infoLine}</div>` : ''}
     </div>`;
   }).join('');
 
+  if(og.table.length===0) onlineTableAnimCount = 0;
+  const onlineTableAnimBaseline = onlineTableAnimCount;
   const tableCardsHTML = (og.table && og.table.length)
-    ? `<div class="table-cards">${og.table.map(t=>`
-        <div class="table-card-slot">${cardHTML(t.card,{small:true})}<div class="table-card-name">${rPlayerById(og,t.playerId).name}${t.jokerCall?` (${t.jokerCall})`:''}</div></div>
+    ? `<div class="table-cards">${og.table.map((t,idx)=>`
+        <div class="table-card-slot" style="--player-color:${getPlayerColor(rPlayerById(og,t.playerId).seat)};">${cardFlipRevealHTML(t.card, idx>=onlineTableAnimBaseline)}<div class="table-card-name">${rPlayerById(og,t.playerId).name}${t.jokerCall?` (${t.jokerCall})`:''}</div></div>
       `).join('')}</div>`
     : `<div class="empty-table-msg">${phase==='bidding' ? '' : 'Nessuna carta ancora giocata in questa presa.'}</div>`;
+  onlineTableAnimCount = og.table.length;
 
   let tableBestRank = null;
   if(og.table && og.table.length){
@@ -2851,7 +2807,7 @@ function renderOnlineArena(){
       handSection = `<p class="center-text" style="opacity:.8;font-size:13px;">La tua carta è nascosta (vedi quelle degli avversari intorno al tavolo).</p>
         <div class="hand-row">${cardBackHTML(false)}</div>`;
     } else {
-      handSection = `<div class="hand-row my-hand-row">${(og.hands[myId]||[]).map(c=>cardHTML(c,{small:true})).join('')}</div>
+      handSection = `<div class="${handRowClass}">${(og.hands[myId]||[]).map(c=>cardHTML(c,{small:true})).join('')}</div>
         ${cardHoverLabelHTML('cardHoverLabel')}`;
     }
     let actionSection = '';
@@ -2887,10 +2843,10 @@ function renderOnlineArena(){
     </div>${fixedBarHTML}`;
   } else if((phase==='playing' || phase==='jokerChoice') && me){
     const isMe = currentTurnId===myId && phase==='playing';
-    bottomHTML = `<div class="panel center-text hand-panel">
+    bottomHTML = `<div class="panel center-text hand-panel${isMe?' thinking':''}" style="--player-color:${getPlayerColor(me.seat)};">
       ${myStatLineHTML(og.bids[myId], og.tricksWon[myId]||0, me.score)}
       <p class="center-text" style="opacity:.85;">${isMe ? '🎯 Tocca a te giocare!' : `⏳ In attesa che <strong style="color:var(--gold-light)">${rPlayerById(og,currentTurnId).name}</strong> giochi...`}</p>
-      <div class="hand-row my-hand-row">${(og.hands[myId]||[]).map(c=>cardHTML(c,{clickable:isMe})).join('')}</div>
+      <div class="${handRowClass}">${(og.hands[myId]||[]).map(c=>cardHTML(c,{clickable:isMe})).join('')}</div>
       ${cardHoverLabelHTML('cardHoverLabel')}
     </div>`;
   } else if(phase==='trickResult' && me){
@@ -2909,10 +2865,12 @@ function renderOnlineArena(){
     ${header(true)}
     ${onlineInfoBar()}
     <div class="table-arena" style="--seat-scale:${seatScaleFor(opponents.length)}; --tc-scale:${seatScaleFor(opponents.length+1)};">
+    <div class="table-3d-tilt">
       <div class="table-felt"></div>
       <div class="table-corner tc-tl"><svg viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg"><path d="M3 32 Q3 3 32 3" fill="none" stroke="#c9a227" stroke-width="1.8"/><path d="M3 22 Q3 11 14 11" fill="none" stroke="#c9a227" stroke-width="1.1" opacity="0.75"/><path d="M22 3 Q11 3 11 14" fill="none" stroke="#c9a227" stroke-width="1.1" opacity="0.75"/><circle cx="32" cy="3" r="2.4" fill="#c9a227"/><circle cx="3" cy="32" r="2.4" fill="#c9a227"/><circle cx="3" cy="3" r="2" fill="none" stroke="#c9a227" stroke-width="1.1"/><path d="M14 11 Q9 9 8 4" fill="none" stroke="#c9a227" stroke-width="0.9" opacity="0.6"/><path d="M11 14 Q9 9 4 8" fill="none" stroke="#c9a227" stroke-width="0.9" opacity="0.6"/></svg></div><div class="table-corner tc-tr"><svg viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg"><path d="M3 32 Q3 3 32 3" fill="none" stroke="#c9a227" stroke-width="1.8"/><path d="M3 22 Q3 11 14 11" fill="none" stroke="#c9a227" stroke-width="1.1" opacity="0.75"/><path d="M22 3 Q11 3 11 14" fill="none" stroke="#c9a227" stroke-width="1.1" opacity="0.75"/><circle cx="32" cy="3" r="2.4" fill="#c9a227"/><circle cx="3" cy="32" r="2.4" fill="#c9a227"/><circle cx="3" cy="3" r="2" fill="none" stroke="#c9a227" stroke-width="1.1"/><path d="M14 11 Q9 9 8 4" fill="none" stroke="#c9a227" stroke-width="0.9" opacity="0.6"/><path d="M11 14 Q9 9 4 8" fill="none" stroke="#c9a227" stroke-width="0.9" opacity="0.6"/></svg></div><div class="table-corner tc-bl"><svg viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg"><path d="M3 32 Q3 3 32 3" fill="none" stroke="#c9a227" stroke-width="1.8"/><path d="M3 22 Q3 11 14 11" fill="none" stroke="#c9a227" stroke-width="1.1" opacity="0.75"/><path d="M22 3 Q11 3 11 14" fill="none" stroke="#c9a227" stroke-width="1.1" opacity="0.75"/><circle cx="32" cy="3" r="2.4" fill="#c9a227"/><circle cx="3" cy="32" r="2.4" fill="#c9a227"/><circle cx="3" cy="3" r="2" fill="none" stroke="#c9a227" stroke-width="1.1"/><path d="M14 11 Q9 9 8 4" fill="none" stroke="#c9a227" stroke-width="0.9" opacity="0.6"/><path d="M11 14 Q9 9 4 8" fill="none" stroke="#c9a227" stroke-width="0.9" opacity="0.6"/></svg></div><div class="table-corner tc-br"><svg viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg"><path d="M3 32 Q3 3 32 3" fill="none" stroke="#c9a227" stroke-width="1.8"/><path d="M3 22 Q3 11 14 11" fill="none" stroke="#c9a227" stroke-width="1.1" opacity="0.75"/><path d="M22 3 Q11 3 11 14" fill="none" stroke="#c9a227" stroke-width="1.1" opacity="0.75"/><circle cx="32" cy="3" r="2.4" fill="#c9a227"/><circle cx="3" cy="32" r="2.4" fill="#c9a227"/><circle cx="3" cy="3" r="2" fill="none" stroke="#c9a227" stroke-width="1.1"/><path d="M14 11 Q9 9 8 4" fill="none" stroke="#c9a227" stroke-width="0.9" opacity="0.6"/><path d="M11 14 Q9 9 4 8" fill="none" stroke="#c9a227" stroke-width="0.9" opacity="0.6"/></svg></div>
       ${seatsHTML}
       <div class="table-center-cards">${tableCardsHTML}</div>
+    </div>
     </div>
     <div class="table-spacer"></div>
     ${bottomHTML}
