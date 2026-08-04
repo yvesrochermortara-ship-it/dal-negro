@@ -334,7 +334,7 @@
   }
   .seat-card-ratio.green{ color:#5cf08c; }
   .seat-card-ratio.red{ color:#ff6b6b; }
-  .seat-card-ratio.fuchsia{ color:#e84fd6; }
+  .seat-card-ratio.fuchsia{ color:#f5d90a; }
   @media (max-width:640px){
     .seat-card-ratio{ font-size:calc(24px * var(--seat-scale, 1)); }
   }
@@ -343,6 +343,9 @@
     border-radius:8px; border-width:2px; flex-shrink:0;
   }
   .opponent-seat .seat-count{ font-size:calc(16px * var(--seat-scale, 1)); font-weight:800; color:var(--cream); opacity:.95; flex-shrink:0; }
+  .opponent-seat .seat-taken{ font-size:calc(16px * var(--seat-scale, 1)); font-weight:800; opacity:.95; flex-shrink:0; }
+  .opponent-seat .seat-taken.green{ color:#5cf08c; }
+  .opponent-seat .seat-taken.red{ color:#ff6b6b; }
   .opponent-seat .seat-name{
     font-size:calc(20.5px * var(--seat-scale, 1)); font-weight:800; background:rgba(0,0,0,.4);
     padding:3px 10px; border-radius:10px;
@@ -361,7 +364,7 @@
     animation: turnHalo 2.6s ease-in-out infinite;
   }
   .opponent-seat .seat-info{ font-size:calc(15px * var(--seat-scale, 1)); font-weight:800; opacity:.95; line-height:1.2; white-space:normal; word-break:keep-all; max-width:100%; }
-  .opponent-seat .seat-info .fuchsia{ color:#e84fd6; font-weight:800; }
+  .opponent-seat .seat-info .fuchsia{ color:#f5d90a; font-weight:800; }
   .opponent-seat .seat-info .green{ color:#4fd671; font-weight:800; }
   .opponent-seat .seat-info .red{ color:#e25c5c; font-weight:800; }
   @media (max-width:640px){
@@ -370,6 +373,7 @@
     .opponent-seat .seat-name{ font-size:calc(13px * var(--seat-scale, 1)); padding:2px 6px; }
     .opponent-seat .seat-info{ font-size:calc(11px * var(--seat-scale, 1)); }
     .opponent-seat .seat-count{ font-size:calc(11px * var(--seat-scale, 1)); }
+    .opponent-seat .seat-taken{ font-size:calc(11px * var(--seat-scale, 1)); }
   }
 
   .table-row-layout{ display:flex; gap:14px; align-items:flex-start; justify-content:center; flex-wrap:wrap; width:100%; max-width:820px; margin:0 auto; }
@@ -583,6 +587,52 @@
     padding:16px; z-index:800;
   }
   .joker-choice{ display:flex; gap:16px; justify-content:center; margin-top:16px;}
+
+  .joker-drop-overlay{
+    position:fixed; inset:0; z-index:900; pointer-events:none;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    overflow:hidden;
+    animation: jokerOverlayFade 1.9s ease forwards;
+  }
+  @keyframes jokerOverlayFade{
+    0%, 75% { background:rgba(0,0,0,0); }
+    82% { background:rgba(0,0,0,.35); }
+    100% { background:rgba(0,0,0,0); }
+  }
+  .joker-drop-glow{
+    position:absolute; width:120px; height:120px; border-radius:50%;
+    background: radial-gradient(circle, rgba(255,235,180,1) 0%, rgba(201,162,39,.9) 30%, rgba(201,162,39,0) 70%);
+    animation: jokerGlowBuild 1.9s cubic-bezier(.2,.8,.2,1) forwards;
+  }
+  @keyframes jokerGlowBuild{
+    0% { transform:scale(.3); opacity:.4; }
+    68% { transform:scale(1.1); opacity:.9; }
+    78% { transform:scale(4.5); opacity:1; }
+    100% { transform:scale(6); opacity:0; }
+  }
+  .joker-drop-text{
+    position:relative; font-family:'Cinzel',serif; font-weight:800; letter-spacing:.08em;
+    font-size:clamp(22px,6vw,34px); color:var(--gold-light);
+    text-shadow:0 0 16px rgba(201,162,39,.8), 0 2px 4px rgba(0,0,0,.6);
+    animation: jokerTextIn .5s cubic-bezier(.3,1.6,.4,1) both;
+  }
+  @keyframes jokerTextIn{
+    0% { opacity:0; transform:translateY(14px) scale(.7); }
+    100% { opacity:1; transform:translateY(0) scale(1); }
+  }
+  .joker-drop-choice{
+    position:relative; font-family:'Cinzel',serif; font-weight:800; letter-spacing:.05em;
+    font-size:clamp(40px,12vw,72px); margin-top:6px;
+    text-shadow:0 0 24px currentColor, 0 4px 10px rgba(0,0,0,.7);
+    opacity:0; animation: jokerChoiceDrop .6s cubic-bezier(.2,1.8,.35,1) .68s forwards;
+  }
+  @keyframes jokerChoiceDrop{
+    0% { opacity:0; transform:scale(2.4); }
+    60% { opacity:1; transform:scale(.92); }
+    100% { opacity:1; transform:scale(1); }
+  }
+  .joker-drop-choice-alta{ color:#5cf08c; }
+  .joker-drop-choice-bassa{ color:#ff6b6b; }
 
   .round-summary-row{ display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px dashed rgba(255,255,255,.15); font-size:14px;}
   .round-summary-row .name{ font-weight:700; }
@@ -873,7 +923,7 @@ function autoPlayBlindRound(){
     game.phase = 'blindJokerChoice';
     game.pendingJokerCard = jokerEntry.playerId;
   } else {
-    resolveTrick();
+    game.phase = 'blindReveal';
   }
 }
 
@@ -910,7 +960,8 @@ function confirmJokerChoice(choice){
     const entry = game.table.find(t=>t.playerId===game.pendingJokerCard);
     entry.jokerCall = choice;
     game.pendingJokerCard = null;
-    resolveTrick();
+    game.phase = 'blindReveal';
+    render();
     return;
   }
   const {playerId, cardIdx} = game.pendingJokerCard;
@@ -1311,23 +1362,6 @@ function myStatLineHTML(declared, taken, score){
   return `<div class="my-stat-line">D <span class="${cls}">${declaredDisplay}</span>/<span class="${cls}">${taken}</span> · <span class="sp-score" style="color:#4fd671;">${score}</span>pt</div>`;
 }
 
-// ---- Live side panel: score / declared / taken-this-round, per player ----
-function playersSidePanelHTML(playersData, currentTurnId){
-  const rows = playersData.map(p=>{
-    const colorClass = p.taken === p.declared ? 'green' : 'red';
-    const isCurrent = currentTurnId && p.id===currentTurnId;
-    return `<div class="sp-row${isCurrent?' sp-current':''}">
-      <div class="sp-name">${p.name}${p.isMe?' (tu)':''}</div>
-      <div class="sp-stats">
-        <span>Punti <span class="sp-score">${p.score}</span></span>
-        <span>Dich <b>${p.declared}</b></span>
-        <span>Prese <span class="sp-counter ${colorClass}">${p.taken}</span></span>
-      </div>
-    </div>`;
-  }).join('');
-  return `<div class="side-panel"><div class="sp-title">Giocatori</div>${rows}</div>`;
-}
-
 // ---- Card hover label: shows "7 di Coppe" / "Jolly" when hovering any card ----
 function labelForCardId(id){
   if(id==='jolly') return 'Jolly';
@@ -1423,7 +1457,7 @@ function render(){
   }
   if(!game){ renderSetup(); return; }
 
-  const ARENA_PHASES = ['bidding','playing','trickResult','jokerChoice','blindJokerChoice'];
+  const ARENA_PHASES = ['bidding','playing','trickResult','blindReveal','jokerChoice','blindJokerChoice'];
   if(ARENA_PHASES.includes(game.phase)){
     renderLocalArena();
     const jokerOwnerIsBot = game.vsAI && game.phase==='blindJokerChoice' && playerById(game.pendingJokerCard).isBot;
@@ -1436,6 +1470,7 @@ function render(){
       if(jokerOwnerIsBot) scheduleBotMove();
     }
     if(game.phase==='trickResult') scheduleTrickAdvance();
+    if(game.phase==='blindReveal') scheduleBlindRevealAdvance();
     return;
   }
 
@@ -1505,6 +1540,16 @@ function scheduleTrickAdvance(){
     nextTrickOrEndRound();
   }, 1500);
 }
+let blindRevealScheduled = false;
+function scheduleBlindRevealAdvance(){
+  if(blindRevealScheduled || !game || game.phase!=='blindReveal') return;
+  blindRevealScheduled = true;
+  setTimeout(()=>{
+    blindRevealScheduled = false;
+    if(!game || game.phase!=='blindReveal') return;
+    resolveTrick();
+  }, 3200);
+}
 
 function renderLocalArena(){
   const phase = game.phase;
@@ -1518,6 +1563,7 @@ function renderLocalArena(){
   else if(phase==='playing' || phase==='jokerChoice') meId = currentPlayerToPlayId();
   else if(phase==='blindJokerChoice') meId = game.pendingJokerCard;
   else if(phase==='trickResult') meId = game.lastTrickWinner;
+  else if(phase==='blindReveal') meId = game.playOrder[0];
   const me = playerById(meId);
   const opponents = activePlayers().filter(p=>p.id!==meId);
   const seatPositions = computeSeatPositions(opponents.length);
@@ -1550,10 +1596,15 @@ function renderLocalArena(){
       cardRatioOverlay = `<div class="seat-card-ratio ${cls}">${declared}/${taken}</div>`;
     }
     let cardVisual;
+    const oppDeclared = game.bids[opp.id];
+    const oppTaken = game.tricksWon[opp.id]||0;
+    const takenBadge = (oppDeclared===null || oppDeclared===undefined)
+      ? `<span class="seat-taken">…</span>`
+      : (()=>{ const diff = oppTaken - oppDeclared; const diffCls = diff===0?'green':'red'; return `<span class="seat-taken ${diffCls}">${diff>0?'+':''}${diff}</span>`; })();
     if(blind && phase==='bidding' && game.hands[opp.id]){
-      cardVisual = cardHTML(game.hands[opp.id][0], {small:true});
+      cardVisual = `${takenBadge}${cardHTML(game.hands[opp.id][0], {small:true})}`;
     } else {
-      cardVisual = `<div class="seat-card-wrap">${cardBackHTML('tiny')}${cardRatioOverlay}</div><span class="seat-count">×${cardsRemaining}</span>`;
+      cardVisual = `${takenBadge}<div class="seat-card-wrap">${cardBackHTML('tiny')}${cardRatioOverlay}</div><span class="seat-count">×${cardsRemaining}</span>`;
     }
     return `<div class="opponent-seat${isTurn?' thinking':''}" style="left:${pos.left}%; top:${pos.top}%; --player-color:${getPlayerColor(opp.seat)};">
       <div class="seat-cards">${cardVisual}</div>
@@ -1630,6 +1681,11 @@ function renderLocalArena(){
       ${myStatLineHTML(game.bids[me.id], game.tricksWon[me.id], me.score)}
       <div class="${handRowClass}">${game.hands[me.id].map(c=>cardHTML(c,{clickable:isMe})).join('')}</div>
       ${cardHoverLabelHTML('cardHoverLabel')}
+    </div>`;
+  } else if(phase==='blindReveal' && me){
+    bottomHTML = `<div class="panel center-text hand-panel">
+      <div class="section-title">🃏 Si girano tutte le carte!</div>
+      <p style="opacity:.85;">Ecco anche la tua, che prima non potevi vedere. Un attimo e si scopre chi vince la presa…</p>
     </div>`;
   } else if(phase==='trickResult' && me){
     const winnerName = playerById(game.lastTrickWinner).name;
@@ -1913,6 +1969,66 @@ function renderPassScreen(kind){
 
 // ---- Bidding ----
 // ---- Playing ----
+// ---- Jolly "drop" moment: dramatic reveal animation + a synthesized (not sampled) sound effect ----
+function playJokerDropSound(){
+  try{
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if(!Ctx) return;
+    const ctx = new Ctx();
+    const now = ctx.currentTime;
+
+    // A single plucked harp-like note: bright attack, quick natural decay,
+    // with a soft higher overtone layered in for shimmer.
+    function pluck(freq, startAt, gainPeak, decay){
+      const osc = ctx.createOscillator();
+      const overtone = ctx.createOscillator();
+      const g = ctx.createGain();
+      const og = ctx.createGain();
+      osc.type = 'triangle';
+      overtone.type = 'sine';
+      osc.frequency.setValueAtTime(freq, startAt);
+      overtone.frequency.setValueAtTime(freq*2, startAt);
+      g.gain.setValueAtTime(0.0001, startAt);
+      g.gain.exponentialRampToValueAtTime(gainPeak, startAt+0.008);
+      g.gain.exponentialRampToValueAtTime(0.0001, startAt+decay);
+      og.gain.setValueAtTime(0.0001, startAt);
+      og.gain.exponentialRampToValueAtTime(gainPeak*0.25, startAt+0.008);
+      og.gain.exponentialRampToValueAtTime(0.0001, startAt+decay*0.6);
+      osc.connect(g).connect(ctx.destination);
+      overtone.connect(og).connect(ctx.destination);
+      osc.start(startAt); osc.stop(startAt+decay+0.05);
+      overtone.start(startAt); overtone.stop(startAt+decay*0.6+0.05);
+    }
+
+    // Rising glissando, like a harp run up a bright major scale.
+    const scale = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25, 783.99, 880.00, 1046.50, 1174.66];
+    scale.forEach((freq, i)=>{
+      pluck(freq, now + i*0.045, 0.14, 0.5);
+    });
+
+    // A shimmering chord at the top, ringing out once the choice lands.
+    const chordAt = now + scale.length*0.045 + 0.05;
+    [1046.50, 1318.51, 1567.98].forEach(freq=>{
+      pluck(freq, chordAt, 0.16, 1.1);
+    });
+
+    setTimeout(()=>{ try{ ctx.close(); }catch(e){} }, (chordAt-now+1.3)*1000);
+  }catch(e){ /* audio isn't critical to gameplay — fail silently */ }
+}
+function playJokerDropAnimation(choice){
+  const existing = document.getElementById('jokerDropOverlay');
+  if(existing) existing.remove();
+  const label = choice==='alta' ? 'ALTA' : 'BASSA';
+  const overlay = el(`<div class="joker-drop-overlay" id="jokerDropOverlay">
+    <div class="joker-drop-glow"></div>
+    <div class="joker-drop-text">🃏 DAL NEGRO</div>
+    <div class="joker-drop-choice joker-drop-choice-${choice}">${label}</div>
+  </div>`);
+  document.body.appendChild(overlay);
+  playJokerDropSound();
+  setTimeout(()=>{ const o = document.getElementById('jokerDropOverlay'); if(o) o.remove(); }, 1900);
+}
+
 function renderJokerModal(){
   const existing = document.getElementById('jokerOverlay');
   if(existing) existing.remove();
@@ -1929,11 +2045,12 @@ function renderJokerModal(){
     </div>
   </div>`);
   document.body.appendChild(overlay);
-  document.getElementById('jHigh').onclick = ()=>{ overlay.remove(); confirmJokerChoice('alta'); afterJokerResume(); };
-  document.getElementById('jLow').onclick = ()=>{ overlay.remove(); confirmJokerChoice('bassa'); afterJokerResume(); };
+  document.getElementById('jHigh').onclick = ()=>{ overlay.remove(); playJokerDropAnimation('alta'); confirmJokerChoice('alta'); afterJokerResume(); };
+  document.getElementById('jLow').onclick = ()=>{ overlay.remove(); playJokerDropAnimation('bassa'); confirmJokerChoice('bassa'); afterJokerResume(); };
 }
 
 function afterJokerResume(){
+  if(game.phase==='blindReveal') return; // confirmJokerChoice already rendered this state
   if(game.phase==='playing' || game.phase==='trickResult' || game.phase==='roundSummary' || game.phase==='gameEnd'){
     if(game.phase==='playing'){
       game.phase = game.vsAI ? 'playing' : 'passToPlay';
@@ -2118,7 +2235,7 @@ function rAutoPlayBlindRound(state){
     state.phase = 'blindJokerChoice';
     state.pendingJokerCard = jokerEntry.playerId;
   } else {
-    rResolveTrick(state);
+    state.phase = 'blindReveal';
   }
 }
 
@@ -2151,7 +2268,7 @@ function rConfirmJokerChoice(state, ownerId, choice){
     const entry = state.table.find(t=>t.playerId===state.pendingJokerCard);
     entry.jokerCall = choice;
     state.pendingJokerCard = null;
-    rResolveTrick(state);
+    state.phase = 'blindReveal';
     return;
   }
   if(state.phase!=='jokerChoice' || !state.pendingJokerCard || state.pendingJokerCard.playerId!==ownerId) return;
@@ -2292,6 +2409,7 @@ let myRoomCode = null;
 let myName = null;
 let pollTimer = null;
 let autoAdvanceScheduled = false;
+let blindRevealAutoAdvanceScheduled = false;
 
 function genId(){ return 'p_' + Math.random().toString(36).slice(2,9); }
 function genRoomCode(){
@@ -2389,6 +2507,19 @@ function maybeHostAutoAdvance(){
         renderOnline();
       }
     }, 2200);
+  }
+  if(og.phase==='blindReveal' && !blindRevealAutoAdvanceScheduled){
+    blindRevealAutoAdvanceScheduled = true;
+    setTimeout(async ()=>{
+      blindRevealAutoAdvanceScheduled = false;
+      const fresh = await loadRoom(myRoomCode);
+      if(fresh && fresh.phase==='blindReveal'){
+        rResolveTrick(fresh);
+        await saveRoom(fresh);
+        og = fresh;
+        renderOnline();
+      }
+    }, 3200);
   }
 }
 
@@ -2523,6 +2654,7 @@ function renderOnline(){
     case 'lobby': renderLobby(); break;
     case 'bidding': renderOnlineArena(); break;
     case 'playing': renderOnlineArena(); break;
+    case 'blindReveal': renderOnlineArena(); break;
     case 'jokerChoice':
     case 'blindJokerChoice': renderOnlineJoker(); break;
     case 'trickResult': renderOnlineArena(); break;
@@ -2768,10 +2900,15 @@ function renderOnlineArena(){
       cardRatioOverlay = `<div class="seat-card-ratio ${cls}">${declared}/${taken}</div>`;
     }
     let cardVisual;
+    const oppDeclared = og.bids[opp.id];
+    const oppTaken = og.tricksWon[opp.id]||0;
+    const takenBadge = (oppDeclared===null || oppDeclared===undefined)
+      ? `<span class="seat-taken">…</span>`
+      : (()=>{ const diff = oppTaken - oppDeclared; const diffCls = diff===0?'green':'red'; return `<span class="seat-taken ${diffCls}">${diff>0?'+':''}${diff}</span>`; })();
     if(blind && phase==='bidding' && og.hands[opp.id]){
-      cardVisual = cardHTML(og.hands[opp.id][0], {small:true});
+      cardVisual = `${takenBadge}${cardHTML(og.hands[opp.id][0], {small:true})}`;
     } else {
-      cardVisual = `<div class="seat-card-wrap">${cardBackHTML('tiny')}${cardRatioOverlay}</div><span class="seat-count">×${cardsRemaining}</span>`;
+      cardVisual = `${takenBadge}<div class="seat-card-wrap">${cardBackHTML('tiny')}${cardRatioOverlay}</div><span class="seat-count">×${cardsRemaining}</span>`;
     }
     return `<div class="opponent-seat${isTurn?' thinking':''}" style="left:${pos.left}%; top:${pos.top}%; --player-color:${getPlayerColor(opp.seat)};">
       <div class="seat-cards">${cardVisual}</div>
@@ -2849,6 +2986,15 @@ function renderOnlineArena(){
       <div class="${handRowClass}">${(og.hands[myId]||[]).map(c=>cardHTML(c,{clickable:isMe})).join('')}</div>
       ${cardHoverLabelHTML('cardHoverLabel')}
     </div>`;
+  } else if(phase==='blindReveal' && me){
+    const isHost = og.hostId===myId;
+    bottomHTML = `<div class="panel center-text hand-panel">
+      <div class="section-title">🃏 Si girano tutte le carte!</div>
+      <p style="opacity:.85;">Ecco anche la tua, che prima non potevi vedere.</p>
+      ${isHost
+        ? `<div class="btn-row"><button class="btn" id="revealContBtn">Continua ora</button></div><p style="font-size:12px;opacity:.6;">Si continua automaticamente tra pochi secondi...</p>`
+        : `<p class="center-text" style="opacity:.7;font-size:13px;">Un attimo e si scopre chi vince la presa…</p>`}
+    </div>`;
   } else if(phase==='trickResult' && me){
     const winner = rPlayerById(og, og.lastTrickWinner);
     const isHost = og.hostId===myId;
@@ -2899,6 +3045,10 @@ function renderOnlineArena(){
     const contBtn = document.getElementById('contBtn');
     if(contBtn) contBtn.onclick = ()=>{ actOnline(state=>{ rNextTrickOrEndRound(state); }); };
   }
+  if(phase==='blindReveal'){
+    const revealContBtn = document.getElementById('revealContBtn');
+    if(revealContBtn) revealContBtn.onclick = ()=>{ actOnline(state=>{ rResolveTrick(state); }); };
+  }
 }
 
 function renderOnlineJoker(){
@@ -2919,8 +3069,8 @@ function renderOnlineJoker(){
       </div>
     </div></div>`);
     document.body.appendChild(overlay);
-    document.getElementById('jHigh').onclick = ()=>{ overlay.remove(); actOnline(state=>{ rConfirmJokerChoice(state, myId, 'alta'); }); };
-    document.getElementById('jLow').onclick = ()=>{ overlay.remove(); actOnline(state=>{ rConfirmJokerChoice(state, myId, 'bassa'); }); };
+    document.getElementById('jHigh').onclick = ()=>{ overlay.remove(); playJokerDropAnimation('alta'); actOnline(state=>{ rConfirmJokerChoice(state, myId, 'alta'); }); };
+    document.getElementById('jLow').onclick = ()=>{ overlay.remove(); playJokerDropAnimation('bassa'); actOnline(state=>{ rConfirmJokerChoice(state, myId, 'bassa'); }); };
   } else {
     const overlay = el(`<div class="modal-overlay" id="jokerOverlay"><div class="panel" style="max-width:420px;">
       <div class="section-title">Il Jolly!</div>
