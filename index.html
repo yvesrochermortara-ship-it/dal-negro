@@ -634,6 +634,31 @@
   .joker-drop-choice-alta{ color:#5cf08c; }
   .joker-drop-choice-bassa{ color:#ff6b6b; }
 
+  .sync-badge{
+    position:fixed; bottom:calc(12px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%);
+    z-index:1200; padding:7px 14px; border-radius:16px; font-size:12.5px; font-weight:700;
+    pointer-events:none; white-space:nowrap; box-shadow:0 4px 12px rgba(0,0,0,.4);
+  }
+  .sync-badge.syncing{ background:rgba(11,42,32,.95); border:1px solid var(--gold); color:var(--gold-light); }
+  .sync-badge.error{ background:rgba(80,20,20,.95); border:1px solid #e25c5c; color:#ffd7d7; }
+
+  .joker-drop-mini{
+    position:fixed; top:calc(60px + env(safe-area-inset-top)); left:50%; transform:translateX(-50%);
+    z-index:850; pointer-events:none;
+    background:rgba(11,42,32,.92); border:1px solid var(--gold); border-radius:20px;
+    padding:9px 18px; font-size:13.5px; font-weight:700; color:var(--cream);
+    box-shadow:0 6px 16px rgba(0,0,0,.4); white-space:nowrap;
+    animation: jokerMiniIn .4s cubic-bezier(.3,1.4,.4,1) both, jokerMiniOut .4s ease 1.8s forwards;
+  }
+  @keyframes jokerMiniIn{
+    from{ opacity:0; transform:translateX(-50%) translateY(-14px); }
+    to{ opacity:1; transform:translateX(-50%) translateY(0); }
+  }
+  @keyframes jokerMiniOut{
+    from{ opacity:1; }
+    to{ opacity:0; }
+  }
+
   .round-summary-row{ display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px dashed rgba(255,255,255,.15); font-size:14px;}
   .round-summary-row .name{ font-weight:700; }
   .round-summary-row .detail{ opacity:.75; font-size:12.5px; }
@@ -686,6 +711,7 @@
 </div>
 <div id="themePanel" style="display:none;"></div>
 <div id="mobileMenuPanel" style="display:none;"></div>
+<div id="syncStatusBadge" class="sync-badge" style="display:none;"></div>
 <div id="scorePanel" style="display:none;"></div>
 <div id="playersPanel" style="display:none;"></div>
 <div id="rulesPanel" style="display:none;"></div>
@@ -2029,6 +2055,55 @@ function playJokerDropAnimation(choice){
   setTimeout(()=>{ const o = document.getElementById('jokerDropOverlay'); if(o) o.remove(); }, 1900);
 }
 
+// ---- Smaller version shown to everyone else when someone else plays the Jolly ----
+function playJokerMiniChime(){
+  try{
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if(!Ctx) return;
+    const ctx = new Ctx();
+    const now = ctx.currentTime;
+    [523.25, 659.25, 783.99].forEach((freq,i)=>{
+      const t = now + i*0.05;
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, t);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.08, t+0.008);
+      g.gain.exponentialRampToValueAtTime(0.0001, t+0.35);
+      osc.connect(g).connect(ctx.destination);
+      osc.start(t); osc.stop(t+0.4);
+    });
+    setTimeout(()=>{ try{ ctx.close(); }catch(e){} }, 700);
+  }catch(e){ /* not critical */ }
+}
+function playJokerDropAnimationForOpponent(playerName, choice){
+  const existing = document.getElementById('jokerDropOverlayMini');
+  if(existing) existing.remove();
+  const label = choice==='alta' ? 'ALTA' : 'BASSA';
+  const banner = el(`<div class="joker-drop-mini" id="jokerDropOverlayMini">
+    🃏 <strong>${playerName}</strong> ha giocato il Jolly — <span class="joker-drop-choice-${choice}">${label}</span>
+  </div>`);
+  document.body.appendChild(banner);
+  playJokerMiniChime();
+  setTimeout(()=>{ const o = document.getElementById('jokerDropOverlayMini'); if(o) o.remove(); }, 2200);
+}
+let lastSeenJokerRevealTs = undefined; // undefined = not yet tracked (fresh connect/reconnect)
+function checkForOpponentJokerReveal(){
+  if(!og || !og.lastJokerReveal) return;
+  const reveal = og.lastJokerReveal;
+  if(lastSeenJokerRevealTs === undefined){
+    // first time we're looking at this room: just catch up silently, don't
+    // replay an animation for something that may have happened before we connected
+    lastSeenJokerRevealTs = reveal.ts;
+    return;
+  }
+  if(reveal.ts === lastSeenJokerRevealTs) return;
+  lastSeenJokerRevealTs = reveal.ts;
+  if(reveal.playerId === myId) return; // you already saw your own full-size animation
+  playJokerDropAnimationForOpponent(reveal.playerName, reveal.choice);
+}
+
 function renderJokerModal(){
   const existing = document.getElementById('jokerOverlay');
   if(existing) existing.remove();
@@ -2120,6 +2195,11 @@ function showHome(){
   stopPolling();
   stopHeartbeat();
   hidePlayersPanel();
+  game = null;
+  og = null; myId = null; myRoomCode = null;
+  lastSeenJokerRevealTs = undefined;
+  consecutivePollFailures = 0;
+  setOnlineSyncStatus('ok');
   scorePanelOpen = false;
   const scPanel = document.getElementById('scorePanel');
   const scBtn = document.getElementById('scoreToggleBtn');
@@ -2269,11 +2349,13 @@ function rConfirmJokerChoice(state, ownerId, choice){
     entry.jokerCall = choice;
     state.pendingJokerCard = null;
     state.phase = 'blindReveal';
+    state.lastJokerReveal = { playerId: ownerId, playerName: rPlayerById(state, ownerId).name, choice, ts: Date.now() };
     return;
   }
   if(state.phase!=='jokerChoice' || !state.pendingJokerCard || state.pendingJokerCard.playerId!==ownerId) return;
   const {playerId, cardIdx} = state.pendingJokerCard;
   state.pendingJokerCard = null;
+  state.lastJokerReveal = { playerId: ownerId, playerName: rPlayerById(state, ownerId).name, choice, ts: Date.now() };
   rFinalizePlay(state, playerId, cardIdx, choice);
 }
 
@@ -2443,7 +2525,19 @@ async function loadRoom(code){
   }catch(e){ return null; }
 }
 async function saveRoom(state){
-  await window.storage.set(ROOM_PREFIX+state.roomCode, JSON.stringify(state), true);
+  // Every save bumps a version counter. actOnline() uses it to detect the case
+  // where somebody else saved between our read and our write, so we never
+  // silently clobber another player's move.
+  const previousVersion = state.stateVersion || 0;
+  state.stateVersion = previousVersion + 1;
+  // The storage layer swallows network errors and returns null, so treat that as
+  // a real failure here — otherwise a lost move would look like a successful one.
+  const result = await window.storage.set(ROOM_PREFIX+state.roomCode, JSON.stringify(state), true);
+  if(!result){
+    state.stateVersion = previousVersion; // undo, so a retry doesn't skip a version
+    throw new Error('saveRoom failed: storage returned no result');
+  }
+  return result;
 }
 async function loadIdentity(){
   try{
@@ -2458,10 +2552,95 @@ async function clearIdentity(){
   try{ await window.storage.delete(IDENTITY_KEY, false); }catch(e){}
 }
 
-function stopPolling(){ if(pollTimer){ clearInterval(pollTimer); pollTimer=null; } }
+function stopPolling(){
+  if(pollTimer){ clearInterval(pollTimer); pollTimer=null; }
+  stopRealtimeStream();
+}
+
+// --- Real-time updates ---
+// Firebase can push changes to us over a live connection (Server-Sent Events)
+// instead of us asking every 1.5s. That means opponents' moves show up instantly
+// and we use far less data. If the live connection isn't available or drops, we
+// automatically fall back to the old polling behaviour so the game keeps working.
+let realtimeSource = null;
+let realtimeConnected = false;
+function stopRealtimeStream(){
+  if(realtimeSource){
+    try{ realtimeSource.close(); }catch(e){}
+    realtimeSource = null;
+  }
+  realtimeConnected = false;
+}
+function startRealtimeStream(){
+  stopRealtimeStream();
+  if(!STORAGE_READY || !myRoomCode) return false;
+  if(typeof EventSource === 'undefined') return false; // very old browser: stick to polling
+  try{
+    const url = FIREBASE_URL + '/' + encodeURIComponent(ROOM_PREFIX + myRoomCode) + '.json';
+    const src = new EventSource(url);
+    realtimeSource = src;
+
+    src.addEventListener('open', ()=>{
+      realtimeConnected = true;
+      consecutivePollFailures = 0;
+      setOnlineSyncStatus('ok');
+    });
+
+    const handleUpdate = (event)=>{
+      if(!myRoomCode || realtimeSource !== src) return; // stale stream from a room we left
+      let payload;
+      try{ payload = JSON.parse(event.data); }catch(e){ return; }
+      // Firebase sends {path, data}. A root-level update carries the whole room.
+      if(!payload || payload.data === undefined) return;
+      if(payload.path !== '/'){
+        // A partial update: simplest correct move is to re-read the full room.
+        pollRoom();
+        return;
+      }
+      if(payload.data === null) return; // room deleted
+      let fresh;
+      try{
+        fresh = typeof payload.data === 'string' ? JSON.parse(payload.data) : payload.data;
+      }catch(e){ return; }
+      if(!fresh || !fresh.roomCode) return;
+      const changed = JSON.stringify(fresh) !== JSON.stringify(og);
+      og = fresh;
+      if(changed) renderOnline();
+      maybeHostAutoAdvance();
+    };
+    src.addEventListener('put', handleUpdate);
+    src.addEventListener('patch', handleUpdate);
+
+    src.addEventListener('error', ()=>{
+      // Connection dropped; polling (still running below) covers us meanwhile.
+      realtimeConnected = false;
+    });
+    return true;
+  }catch(e){
+    stopRealtimeStream();
+    return false;
+  }
+}
+
 function startPolling(){
   stopPolling();
-  pollTimer = setInterval(pollRoom, 1500);
+  const liveOk = startRealtimeStream();
+  // Keep a poll running either way: fast when we're on our own, slow as a safety
+  // net when the live stream is doing the heavy lifting (covers missed events).
+  currentPollInterval = liveOk ? 6000 : 1500;
+  pollTimer = setInterval(pollRoom, currentPollInterval);
+}
+let currentPollInterval = 1500;
+// If the live connection drops we speed the poll back up; when it recovers we
+// slow it down again. Without this, a dropped stream would leave the game
+// feeling sluggish (only updating every 6s).
+function adjustPollSpeedForStreamState(){
+  if(!myRoomCode || !pollTimer) return;
+  const desired = realtimeConnected ? 6000 : 1500;
+  if(desired === currentPollInterval) return;
+  currentPollInterval = desired;
+  clearInterval(pollTimer);
+  pollTimer = setInterval(pollRoom, currentPollInterval);
 }
 
 // --- Heartbeat: segnala periodicamente "sono ancora qui", usato per lo stato connesso/disconnesso ---
@@ -2484,10 +2663,26 @@ async function sendHeartbeat(){
     og = fresh; // aggiorna la vista locale senza forzare un re-render (ci pensa il prossimo poll)
   }catch(e){}
 }
+let consecutivePollFailures = 0;
 async function pollRoom(){
   if(!myRoomCode) return;
-  const fresh = await loadRoom(myRoomCode);
-  if(!fresh) return;
+  adjustPollSpeedForStreamState();
+  let fresh = null;
+  try{
+    fresh = await loadRoom(myRoomCode);
+  }catch(e){ fresh = null; }
+
+  if(!fresh){
+    consecutivePollFailures++;
+    // A single blip is normal; several in a row means the connection is genuinely down.
+    if(consecutivePollFailures >= 3) setOnlineSyncStatus('error');
+    return;
+  }
+  if(consecutivePollFailures > 0){
+    consecutivePollFailures = 0;
+    setOnlineSyncStatus('ok');
+  }
+  if(!myRoomCode) return; // left while the request was in flight
   const changed = JSON.stringify(fresh) !== JSON.stringify(og);
   og = fresh;
   if(changed) renderOnline();
@@ -2499,10 +2694,12 @@ function maybeHostAutoAdvance(){
     autoAdvanceScheduled = true;
     setTimeout(async ()=>{
       autoAdvanceScheduled = false;
+      if(!myRoomCode) return; // left the room while this was pending
       const fresh = await loadRoom(myRoomCode);
       if(fresh && fresh.phase==='trickResult'){
         rNextTrickOrEndRound(fresh);
         await saveRoom(fresh);
+        if(!myRoomCode) return; // may have left while awaiting the network calls above
         og = fresh;
         renderOnline();
       }
@@ -2512,10 +2709,12 @@ function maybeHostAutoAdvance(){
     blindRevealAutoAdvanceScheduled = true;
     setTimeout(async ()=>{
       blindRevealAutoAdvanceScheduled = false;
+      if(!myRoomCode) return;
       const fresh = await loadRoom(myRoomCode);
       if(fresh && fresh.phase==='blindReveal'){
         rResolveTrick(fresh);
         await saveRoom(fresh);
+        if(!myRoomCode) return;
         og = fresh;
         renderOnline();
       }
@@ -2524,13 +2723,98 @@ function maybeHostAutoAdvance(){
 }
 
 // generic helper: fetch latest room, apply a mutation, save, refresh local view
-async function actOnline(mutatorFn){
-  const fresh = await loadRoom(myRoomCode);
-  if(!fresh) return;
-  mutatorFn(fresh);
-  await saveRoom(fresh);
-  og = fresh;
-  renderOnline();
+// ---- Connection status indicator ----
+let onlineSyncStatus = 'ok'; // 'ok' | 'syncing' | 'error'
+let syncStatusClearTimer = null;
+function setOnlineSyncStatus(status){
+  onlineSyncStatus = status;
+  const badge = document.getElementById('syncStatusBadge');
+  if(!badge) return;
+  if(!myRoomCode){ badge.style.display = 'none'; return; }
+  if(status==='ok'){
+    badge.style.display = 'none';
+  } else if(status==='syncing'){
+    badge.style.display = 'block';
+    badge.className = 'sync-badge syncing';
+    badge.textContent = '⟳ Sincronizzo…';
+  } else {
+    badge.style.display = 'block';
+    badge.className = 'sync-badge error';
+    badge.textContent = '⚠ Problemi di connessione';
+  }
+  if(syncStatusClearTimer) clearTimeout(syncStatusClearTimer);
+  if(status!=='ok'){
+    syncStatusClearTimer = setTimeout(()=>{
+      const b = document.getElementById('syncStatusBadge');
+      if(b && onlineSyncStatus!=='error') b.style.display = 'none';
+    }, 3000);
+  }
+}
+
+// Applies a change to the shared room safely:
+//  - re-reads the latest state right before writing
+//  - if someone else saved in between, discards our attempt and retries on the fresh state
+//  - retries a few times on network hiccups too, instead of silently losing the move
+async function actOnline(mutatorFn, opts){
+  opts = opts || {};
+  const maxAttempts = opts.maxAttempts || 4;
+  const roomAtStart = myRoomCode;
+  let lastError = null;
+
+  for(let attempt=1; attempt<=maxAttempts; attempt++){
+    if(!myRoomCode || myRoomCode!==roomAtStart) return false; // user left mid-flight
+    let fresh;
+    try{
+      fresh = await loadRoom(myRoomCode);
+    }catch(e){
+      lastError = e; fresh = null;
+    }
+    if(!fresh){
+      // couldn't read: back off briefly and try again
+      lastError = lastError || new Error('room unreadable');
+      await new Promise(r=>setTimeout(r, 250*attempt));
+      continue;
+    }
+
+    const versionBefore = fresh.stateVersion || 0;
+    try{
+      mutatorFn(fresh);
+    }catch(e){
+      // A bad mutation is a programming error, not a network issue — don't retry it.
+      console.error('actOnline mutation failed:', e);
+      return false;
+    }
+
+    // Re-check right before writing: did anyone else save while we were working?
+    let current = null;
+    try{
+      current = await loadRoom(myRoomCode);
+    }catch(e){ current = null; }
+    if(current && (current.stateVersion || 0) !== versionBefore){
+      // Someone else's move landed first. Throw ours away and redo it on their result.
+      setOnlineSyncStatus('syncing');
+      await new Promise(r=>setTimeout(r, 120 + Math.random()*180));
+      continue;
+    }
+
+    try{
+      await saveRoom(fresh);
+    }catch(e){
+      lastError = e;
+      await new Promise(r=>setTimeout(r, 250*attempt));
+      continue;
+    }
+
+    if(!myRoomCode || myRoomCode!==roomAtStart) return false;
+    og = fresh;
+    setOnlineSyncStatus('ok');
+    renderOnline();
+    return true;
+  }
+
+  console.error('actOnline gave up after '+maxAttempts+' attempts', lastError);
+  setOnlineSyncStatus('error');
+  return false;
 }
 
 async function tryAutoRejoin(){
@@ -2640,6 +2924,7 @@ function renderOnlineJoinScreen(errorMsg){
 
 function renderOnline(){
   if(!og){ hidePlayersPanel(); renderScorePanel(); renderOnlineJoinScreen(); return; }
+  checkForOpponentJokerReveal();
   if(og.phase!=='gameEnd'){ statsRecorded = false; }
   if(og.phase!=='jokerChoice' && og.phase!=='blindJokerChoice'){
     const stuckOverlay = document.getElementById('jokerOverlay');
@@ -3310,6 +3595,7 @@ document.getElementById('quitIconBtn').onclick = async ()=>{
     }catch(e){}
   }
   await clearIdentity();
+  game = null;
   og=null; myId=null; myRoomCode=null;
   showQuitScreen();
 };
