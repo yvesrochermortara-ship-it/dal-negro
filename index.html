@@ -749,14 +749,24 @@ const STORAGE_READY = !!FIREBASE_URL && !FIREBASE_URL.startsWith('INSERISCI');
   async function fbSet(key, value){
     if(!STORAGE_READY) return null;
     try{
-      await fetch(fbUrl(key), {method:'PUT', body: JSON.stringify(value)});
+      const res = await fetch(fbUrl(key), {method:'PUT', body: JSON.stringify(value)});
+      // Firebase answers 401/403 when security rules reject the write. Without this
+      // check a blocked write looks like a success, and the game silently loses data.
+      if(!res.ok){
+        console.error('Firebase write rejected:', res.status, key);
+        return null;
+      }
       return {key, value, shared:true};
     }catch(e){ return null; }
   }
   async function fbDelete(key){
     if(!STORAGE_READY) return null;
     try{
-      await fetch(fbUrl(key), {method:'DELETE'});
+      const res = await fetch(fbUrl(key), {method:'DELETE'});
+      if(!res.ok){
+        console.error('Firebase delete rejected:', res.status, key);
+        return null;
+      }
       return {key, deleted:true, shared:true};
     }catch(e){ return null; }
   }
@@ -2844,7 +2854,13 @@ async function createOrJoinRoom(codeRaw, nameRaw){
     finalId = genId();
     room = newRoomState(code, finalName, finalId);
     room.presence[finalId] = now;
-    await saveRoom(room);
+    try{
+      await saveRoom(room);
+    }catch(e){
+      // The very first write failing almost always means the database is refusing
+      // us — typically because the security rules don't allow this write.
+      throw new Error('Non riesco a creare la stanza: il database ha rifiutato la scrittura. Se hai appena cambiato le regole di sicurezza su Firebase, controlla che consentano la scrittura sulle chiavi che iniziano con "dalnegro_room_".');
+    }
   } else {
     room.presence = room.presence || {};
     const existing = room.players.find(p => p.name.trim().toLowerCase() === name.trim().toLowerCase());
