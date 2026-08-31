@@ -588,6 +588,16 @@
   }
   .joker-choice{ display:flex; gap:16px; justify-content:center; margin-top:16px;}
 
+  .flying-card{
+    position:fixed; z-index:880; pointer-events:none;
+    transform-origin:center center; will-change:transform, opacity;
+    filter: drop-shadow(0 8px 16px rgba(0,0,0,.55));
+  }
+  .flying-card .card{ width:100% !important; height:100% !important; }
+  /* While a copy of this card is still flying toward the table, keep the real one
+     invisible — otherwise you briefly see the same card twice. */
+  .awaiting-flight{ opacity:0 !important; }
+
   .joker-drop-overlay{
     position:fixed; inset:0; z-index:900; pointer-events:none;
     display:flex; flex-direction:column; align-items:center; justify-content:center;
@@ -979,10 +989,19 @@ function playCard(playerId, cardId){
 function finalizePlay(playerId, cardIdx, jokerCall){
   const hand = game.hands[playerId];
   const card = hand.splice(cardIdx,1)[0];
+  // Grab where this player currently sits on screen BEFORE re-rendering wipes it,
+  // so we can fly a visual copy of the card from there to the table.
+  const humanId = game.vsAI ? (game.players.find(p=>!p.isBot)||{}).id : null;
+  const flightFrom = getSeatRectFor(playerId, playerId === humanId);
+  const flightTo = getTableCenterRect();
   game.table.push({playerId, card, jokerCall});
   if(!game.roundPlayedCards) game.roundPlayedCards = [];
   game.roundPlayedCards.push(card.id);
   game.turnPointer++;
+  if(flightFrom && flightTo){
+    cardsInFlight.add(card.id);
+    flyCardBetween(flightFrom, flightTo, cardHTML(card, {small:true}), { duration: 400, cardId: card.id });
+  }
   if(game.turnPointer >= game.playOrder.length){
     resolveTrick();
   } else {
@@ -1295,6 +1314,10 @@ function resolveTrick(){
 }
 
 function nextTrickOrEndRound(){
+  // Sweep the played cards toward whoever won, before the table is cleared.
+  const humanId = game.vsAI ? (game.players.find(p=>!p.isBot)||{}).id : null;
+  animateTrickToWinner(game.lastTrickWinner, game.lastTrickWinner === humanId);
+  clearStuckCardFlights();
   game.table = [];
   game.trickIndex++;
   game.turnPointer = 0;
@@ -1642,7 +1665,7 @@ function renderLocalArena(){
     } else {
       cardVisual = `${takenBadge}<div class="seat-card-wrap">${cardBackHTML('tiny')}${cardRatioOverlay}</div><span class="seat-count">×${cardsRemaining}</span>`;
     }
-    return `<div class="opponent-seat${isTurn?' thinking':''}" style="left:${pos.left}%; top:${pos.top}%; --player-color:${getPlayerColor(opp.seat)};">
+    return `<div class="opponent-seat${isTurn?' thinking':''}" data-player-id="${opp.id}" style="left:${pos.left}%; top:${pos.top}%; --player-color:${getPlayerColor(opp.seat)};">
       <div class="seat-cards">${cardVisual}</div>
       <div class="seat-name">${opp.name}${isTurn?' <span class="thinking-dots">●●●</span>':''}</div>
       ${infoLine ? `<div class="seat-info">${infoLine}</div>` : ''}
@@ -1653,7 +1676,7 @@ function renderLocalArena(){
   const tableAnimBaseline = localTableAnimCount;
   const tableCardsHTML = (game.table && game.table.length)
     ? `<div class="table-cards">${game.table.map((t,idx)=>`
-        <div class="table-card-slot" style="--player-color:${getPlayerColor(playerById(t.playerId).seat)};">${cardFlipRevealHTML(t.card, idx>=tableAnimBaseline)}<div class="table-card-name">${playerById(t.playerId).name}${t.jokerCall?` (${t.jokerCall})`:''}</div></div>
+        <div class="table-card-slot${cardsInFlight.has(t.card.id)?' awaiting-flight':''}" data-flight-card="${t.card.id}" style="--player-color:${getPlayerColor(playerById(t.playerId).seat)};">${cardFlipRevealHTML(t.card, idx>=tableAnimBaseline)}<div class="table-card-name">${playerById(t.playerId).name}${t.jokerCall?` (${t.jokerCall})`:''}</div></div>
       `).join('')}</div>`
     : `<div class="empty-table-msg">${phase==='bidding' ? '' : 'Nessuna carta ancora giocata in questa presa.'}</div>`;
   localTableAnimCount = game.table.length;
@@ -2051,6 +2074,130 @@ function playJokerDropSound(){
     setTimeout(()=>{ try{ ctx.close(); }catch(e){} }, (chordAt-now+1.3)*1000);
   }catch(e){ /* audio isn't critical to gameplay — fail silently */ }
 }
+// ---- Card flight: a purely visual clone that flies from A to B ----
+// This never touches game state — it just makes moves feel physical. If anything
+// here fails, the game still plays exactly as before.
+// Cards whose flying copy is still in transit. The renderer checks this so the
+// real card stays hidden until its copy lands — otherwise you'd briefly see the
+// same card in two places at once.
+const cardsInFlight = new Set();
+
+// Safety net: if an animation is ever interrupted (tab backgrounded, re-render at a
+// bad moment, browser hiccup), make sure no card stays invisible forever.
+function clearStuckCardFlights(){
+  if(cardsInFlight.size === 0) return;
+  cardsInFlight.clear();
+  try{
+    document.querySelectorAll('.awaiting-flight').forEach(el=> el.classList.remove('awaiting-flight'));
+  }catch(e){}
+}
+
+function flyCardBetween(fromRect, toRect, innerHTML, opts){
+  opts = opts || {};
+  try{
+    if(!fromRect || !toRect) return;
+    const ghost = document.createElement('div');
+    ghost.className = 'flying-card';
+    ghost.innerHTML = innerHTML;
+    ghost.style.left = fromRect.left + 'px';
+    ghost.style.top = fromRect.top + 'px';
+    ghost.style.width = fromRect.width + 'px';
+    ghost.style.height = fromRect.height + 'px';
+    document.body.appendChild(ghost);
+
+    const dx = toRect.left - fromRect.left;
+    const dy = toRect.top - fromRect.top;
+    const scale = fromRect.width ? (toRect.width / fromRect.width) : 1;
+    const rotate = opts.rotate === undefined ? (Math.random()*10 - 5) : opts.rotate;
+    const duration = opts.duration || 420;
+
+    // Force the browser to register the start position before animating.
+    ghost.getBoundingClientRect();
+    ghost.style.transition = `transform ${duration}ms cubic-bezier(.25,.8,.35,1), opacity ${duration}ms ease`;
+    ghost.style.transform = `translate(${dx}px, ${dy}px) scale(${scale}) rotate(${rotate}deg)`;
+    if(opts.fadeOut) ghost.style.opacity = '0';
+
+    setTimeout(()=>{
+      if(ghost.parentNode) ghost.parentNode.removeChild(ghost);
+      if(opts.cardId){
+        cardsInFlight.delete(opts.cardId);
+        // Reveal the real card now that its flying copy has landed.
+        document.querySelectorAll(`[data-flight-card="${opts.cardId}"]`).forEach(el=>{
+          el.classList.remove('awaiting-flight');
+        });
+      }
+    }, duration + 30);
+  }catch(e){
+    // Visual only — but make sure a failure never leaves a card permanently hidden.
+    if(opts && opts.cardId) cardsInFlight.delete(opts.cardId);
+  }
+}
+
+// Remembers where each player's hand/seat is on screen, so we know where a card
+// should fly FROM when that player plays it.
+function getSeatRectFor(playerId, isMe){
+  try{
+    if(isMe){
+      const handRow = document.querySelector('.hand-row.my-hand-row');
+      if(handRow){
+        const r = handRow.getBoundingClientRect();
+        return { left: r.left + r.width/2 - 40, top: r.top, width: 80, height: 130 };
+      }
+      return null;
+    }
+    const seatEl = document.querySelector(`.opponent-seat[data-player-id="${playerId}"] .seat-card-wrap`);
+    if(seatEl){
+      const r = seatEl.getBoundingClientRect();
+      return { left: r.left, top: r.top, width: r.width, height: r.height };
+    }
+  }catch(e){}
+  return null;
+}
+function getTableCenterRect(){
+  try{
+    const tableCards = document.querySelector('.table-center-cards');
+    if(!tableCards) return null;
+    const r = tableCards.getBoundingClientRect();
+    return { left: r.left + r.width/2 - 45, top: r.top + r.height/2 - 75, width: 90, height: 150 };
+  }catch(e){}
+  return null;
+}
+
+// Called right after a card is played: flies a visual copy from the player to the table.
+function animateCardToTable(playerId, card, isMe){
+  try{
+    const from = getSeatRectFor(playerId, isMe);
+    const to = getTableCenterRect();
+    if(!from || !to) return;
+    flyCardBetween(from, to, cardHTML(card, {small:true}), { duration: 400 });
+  }catch(e){}
+}
+
+// Called when a trick is won: sweeps the played cards toward the winner's seat.
+function animateTrickToWinner(winnerId, isMe){
+  try{
+    const to = getSeatRectFor(winnerId, isMe);
+    if(!to) return;
+    const played = document.querySelectorAll('.table-cards .flip-card-outer');
+    if(!played.length) return;
+    // Capture every position and hide the originals right away, in one pass. If we
+    // staggered the capture instead, the re-render would leave the real cards on
+    // screen next to their flying copies for a moment (the "doubling" effect).
+    const snapshots = [];
+    played.forEach(el=>{
+      const r = el.getBoundingClientRect();
+      snapshots.push({ from:{ left:r.left, top:r.top, width:r.width, height:r.height }, html: el.innerHTML });
+      el.style.visibility = 'hidden';
+    });
+    // Now stagger only the flights themselves, for a nice sweeping effect.
+    snapshots.forEach((snap, i)=>{
+      setTimeout(()=>{
+        flyCardBetween(snap.from, to, snap.html, { duration: 480, fadeOut: true, rotate: (Math.random()*30-15) });
+      }, i*55);
+    });
+  }catch(e){}
+}
+
 function playJokerDropAnimation(choice){
   const existing = document.getElementById('jokerDropOverlay');
   if(existing) existing.remove();
@@ -2208,6 +2355,8 @@ function showHome(){
   game = null;
   og = null; myId = null; myRoomCode = null;
   lastSeenJokerRevealTs = undefined;
+  onlineLastSeenTableLen = 0;
+  onlineLastSeenTrickWinner = null;
   consecutivePollFailures = 0;
   setOnlineSyncStatus('ok');
   scorePanelOpen = false;
@@ -2938,9 +3087,43 @@ function renderOnlineJoinScreen(errorMsg){
   document.getElementById('backHomeBtn').onclick = showHome;
 }
 
+let onlineLastSeenTableLen = 0;
+let onlineLastSeenTrickWinner = null;
+function handleOnlineFlightAnimations(){
+  try{
+    if(!og) return;
+    const tableLen = (og.table||[]).length;
+
+    // A trick was just won: sweep the cards toward the winner (positions are still
+    // on screen at this point, because we haven't re-rendered yet).
+    if(og.phase==='trickResult' && og.lastTrickWinner && og.lastTrickWinner !== onlineLastSeenTrickWinner){
+      onlineLastSeenTrickWinner = og.lastTrickWinner;
+      animateTrickToWinner(og.lastTrickWinner, og.lastTrickWinner === myId);
+    }
+    if(og.phase!=='trickResult') onlineLastSeenTrickWinner = null;
+    if(tableLen === 0) clearStuckCardFlights();
+
+    // New card(s) appeared on the table: fly them in from their owner's seat.
+    if(tableLen > onlineLastSeenTableLen){
+      const to = getTableCenterRect();
+      for(let i=onlineLastSeenTableLen; i<tableLen; i++){
+        const entry = og.table[i];
+        if(!entry) continue;
+        const from = getSeatRectFor(entry.playerId, entry.playerId === myId);
+        if(from && to){
+          cardsInFlight.add(entry.card.id);
+          flyCardBetween(from, to, cardHTML(entry.card, {small:true}), { duration: 400, cardId: entry.card.id });
+        }
+      }
+    }
+    onlineLastSeenTableLen = tableLen;
+  }catch(e){ /* visual only */ }
+}
+
 function renderOnline(){
   if(!og){ hidePlayersPanel(); renderScorePanel(); renderOnlineJoinScreen(); return; }
   checkForOpponentJokerReveal();
+  handleOnlineFlightAnimations();
   if(og.phase!=='gameEnd'){ statsRecorded = false; }
   if(og.phase!=='jokerChoice' && og.phase!=='blindJokerChoice'){
     const stuckOverlay = document.getElementById('jokerOverlay');
@@ -3211,7 +3394,7 @@ function renderOnlineArena(){
     } else {
       cardVisual = `${takenBadge}<div class="seat-card-wrap">${cardBackHTML('tiny')}${cardRatioOverlay}</div><span class="seat-count">×${cardsRemaining}</span>`;
     }
-    return `<div class="opponent-seat${isTurn?' thinking':''}" style="left:${pos.left}%; top:${pos.top}%; --player-color:${getPlayerColor(opp.seat)};">
+    return `<div class="opponent-seat${isTurn?' thinking':''}" data-player-id="${opp.id}" style="left:${pos.left}%; top:${pos.top}%; --player-color:${getPlayerColor(opp.seat)};">
       <div class="seat-cards">${cardVisual}</div>
       <div class="seat-name">${opp.name}${isTurn?' <span class="thinking-dots">●●●</span>':''}</div>
       ${infoLine ? `<div class="seat-info">${infoLine}</div>` : ''}
@@ -3222,7 +3405,7 @@ function renderOnlineArena(){
   const onlineTableAnimBaseline = onlineTableAnimCount;
   const tableCardsHTML = (og.table && og.table.length)
     ? `<div class="table-cards">${og.table.map((t,idx)=>`
-        <div class="table-card-slot" style="--player-color:${getPlayerColor(rPlayerById(og,t.playerId).seat)};">${cardFlipRevealHTML(t.card, idx>=onlineTableAnimBaseline)}<div class="table-card-name">${rPlayerById(og,t.playerId).name}${t.jokerCall?` (${t.jokerCall})`:''}</div></div>
+        <div class="table-card-slot${cardsInFlight.has(t.card.id)?' awaiting-flight':''}" data-flight-card="${t.card.id}" style="--player-color:${getPlayerColor(rPlayerById(og,t.playerId).seat)};">${cardFlipRevealHTML(t.card, idx>=onlineTableAnimBaseline)}<div class="table-card-name">${rPlayerById(og,t.playerId).name}${t.jokerCall?` (${t.jokerCall})`:''}</div></div>
       `).join('')}</div>`
     : `<div class="empty-table-msg">${phase==='bidding' ? '' : 'Nessuna carta ancora giocata in questa presa.'}</div>`;
   onlineTableAnimCount = og.table.length;
